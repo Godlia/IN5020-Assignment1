@@ -1,4 +1,4 @@
-package com.ass1;
+package com.group2;
 
 public class Main {
     public static void main(String[] args) {

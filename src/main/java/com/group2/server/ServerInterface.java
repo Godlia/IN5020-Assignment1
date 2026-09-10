@@ -1,4 +1,4 @@
-package com.ass1.server;
+package com.group2.server;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
