@@ -3,10 +3,12 @@
 Akkurat nå så er dette basically bare en clone av eksempel prosjektet vi har fått fra TA
 
 ## Requirements
+
 * Java 21 (JDK)
 * Maven
 
 ## Installing and running
+
 ```bash
 mvn clean compile jar:jar
 
