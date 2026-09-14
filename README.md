@@ -2,6 +2,29 @@
 
 Akkurat nå så er dette basically bare en clone av eksempel prosjektet vi har fått fra TA
 
+
+## Arbeidsfordeling
+
+* Eirik
+  * Client, query-parsing og tester
+  * Processing Server, logikk og number crunching
+* Oskar
+  * Proxy server, loadbalancing
+  * Client/Server registration
+* Vetle
+  * Dockerization
+  * Docker Compose
+* Kine
+  * Caching
+
+**Uklare oppgaver igjen:**
+
+* Køteknikk
+
+Hvis det kommer noe mer opp så bare skriv det her.
+
+Jeg tror ikke det skader at vi har noen ansvar som overlapper, generelt lurt at all kode som blir skrevet blir dobbeltsjekket av noen andre.
+
 ## Requirements
 
 * Java 21 (JDK)
