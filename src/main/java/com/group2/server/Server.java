@@ -46,5 +46,9 @@ public class Server implements ServerInterface{
         return 1;
     }
 
+    @Override
+    public boolean status() {
+        return true;
+    }
 
 }

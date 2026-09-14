@@ -10,4 +10,5 @@ public interface ServerInterface extends Remote{
     int getNumberOfCities(String countryCode, int threshold, String comp) throws RemoteException;
     int getNumberofCountries(int citycount, int threshold, String comp) throws RemoteException;
     int getNumberofCountriesMM(int citycount, int minpopulation, int maxpopulation) throws RemoteException;
+    boolean status() throws RemoteException;
 }
