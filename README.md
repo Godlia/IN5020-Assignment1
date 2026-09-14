@@ -8,7 +8,7 @@ Akkurat nå så er dette basically bare en clone av eksempel prosjektet vi har f
 * Eirik
   * Client, query-parsing og tester
   * Processing Server, logikk og number crunching
-* Oskar
+* Oscar
   * Proxy server, loadbalancing
   * Client/Server registration
 * Vetle
@@ -34,9 +34,18 @@ Jeg tror ikke det skader at vi har noen ansvar som overlapper, generelt lurt at 
 
 All commands are run in the root folder
 
+Linux / WSL / macOS:
 ```bash
-mvn clean compile jar:jar
+./mvnw clean compile jar:jar
 ```
+Windows:
+```bash
+.\mvnw.cmd clean compile jar:jar
+```
+
+**Temp forklaring til medstudenter**
+Jeg leste meg opp litt, og forstod at det er lurt å ha en Maven wrapper, altså en Maven i prosjektet, så vi deler Maven versjon og øker reproduserbarhet. Jeg har ingen erfraring med dette, men prøvde å sette det opp. Åpen for tilbakemeldinger \
+\- Oscar
 
 ### Now open three other terminals and run these commands in each
 
