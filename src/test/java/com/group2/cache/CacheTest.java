@@ -6,35 +6,36 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class CacheTest {
 
-    // Method 1: Stores and retrieves a value
+    @Test
+    void storesAndRetrievesValueFIFO() {
 
-    // Method 2: Does not exceed capacity
+        Cache<String, Integer> cache = new Cache<>(5, EvictionPolicy.FIFO);
 
-    // Method 3: FIFO removes the first inserted item
+        cache.put("A", 1);
+        Integer result = cache.get("A");
 
-    // Method 4: LRU removes the least recently used item
-
-
+        assertEquals(1, result);
+    }
 
     @Test
     @Disabled("Cache class not fully set up yet")
-    void storesAndRetrievesValue() {
+    void doesNotExceedCapacity() {
     }
 
     @Test
     @Disabled("Cache class not fully set up yet")
     void fifoEvictsFirstInsertedEntry() {
-
     }
 
     @Test
     @Disabled("Cache class not fully set up yet")
-    void lruEvictsLeastRecentlyUsedEntry() {}
+    void lruEvictsLeastRecentlyUsedEntry() {
+    }
 
     @Test
     @Disabled("Cache class not fully set up yet")
     void rejectsZeroCapacity() {
-
     }
+}
     
 
