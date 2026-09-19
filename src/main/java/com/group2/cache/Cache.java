@@ -4,9 +4,8 @@ import java.util.LinkedHashMap;
 
 public class Cache<K, V> {
 
-    // To implement: Signature
     // To implement: capacity
-    // To implement: FIFL/LRU
+    // To implement: FIFO/LRU
     // To implement: hit/miss
     // To implement: timestamp
     // To implement: Javadoc
@@ -20,6 +19,14 @@ public class Cache<K, V> {
         this.capacity = capacity;
         this.policy = policy;
         this.map = new LinkedHashMap<>();
+    }
+
+    public void put(K key, V value){
+        map.put(key, value);
+    }
+
+    public V get(K key){
+        return map.get(key);
     }
 
 
