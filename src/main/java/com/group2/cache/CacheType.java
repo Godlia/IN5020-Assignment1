@@ -1,5 +1,6 @@
 package com.group2.cache;
 
 public enum CacheType {
-    CLIENT, SERVER
+    CLIENT, 
+    SERVER
 }
