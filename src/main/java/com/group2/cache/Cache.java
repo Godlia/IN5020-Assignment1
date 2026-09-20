@@ -1,6 +1,7 @@
 package com.group2.cache;
 
 import java.util.LinkedHashMap;
+import java.util.Objects;
 
 public class Cache<K, V> {
 
@@ -11,23 +12,35 @@ public class Cache<K, V> {
     // To implement: Javadoc
 
 
-    final private LinkedHashMap<K, V> map;
-    final int capacity;
+    final private LinkedHashMap<K, V> internalMap;
+    final private int capacity;
     final private EvictionPolicy policy;
 
     public Cache(int capacity, EvictionPolicy policy){
+        if (capacity <= 0) {
+            throw new IllegalArgumentException("Maximum number of entries must be greater than zero.");
+        }
+
         this.capacity = capacity;
-        this.policy = policy;
-        this.map = new LinkedHashMap<>();
+        this.policy = Objects.requireNonNull(policy);
+        this.internalMap = new LinkedHashMap<>();
     }
 
     public void put(K key, V value){
-        map.put(key, value);
+        internalMap.put(key, value);
     }
 
     public V get(K key){
-        return map.get(key);
+        return internalMap.get(key);
     }
+
+    // **** getters ****
+
+
+
+    // **** setters ****
+
+
 
 
 
