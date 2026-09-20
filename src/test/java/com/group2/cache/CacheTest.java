@@ -28,8 +28,6 @@ import org.junit.jupiter.api.BeforeEach;
  */
 public class CacheTest {
 
-    
-
 
     @Nested
     class InvariantChecks {
@@ -83,6 +81,7 @@ public class CacheTest {
 
         @ParameterizedTest
         @EnumSource(EvictionPolicy.class)
+
         void storesAndRetrievesValue(EvictionPolicy policy) {
 
             Cache<String, Integer> cache = new Cache<>(5, policy);
@@ -91,6 +90,27 @@ public class CacheTest {
             Integer result = cache.get("A");
 
             assertEquals(1, result);
+        }
+
+        @ParameterizedTest
+        @EnumSource(EvictionPolicy.class)
+        void returnsNullForCacheMiss(EvictionPolicy policy) {
+
+            Cache<String, Integer> cache = new Cache<>(5, policy);
+            assertNull(cache.get("A"));
+        }
+
+        @ParameterizedTest
+        @EnumSource(EvictionPolicy.class)
+        @Disabled("Cache class not fully set up yet")
+        void handlesCapacityOfOne(EvictionPolicy policy) {
+        }
+
+        // Replacing a value must not create an additional cache entry
+        @ParameterizedTest
+        @EnumSource(EvictionPolicy.class)
+        @Disabled("Cache class not fully set up yet")
+        void putUpdatesExistingValue(EvictionPolicy policy) {
         }
 
         @ParameterizedTest
@@ -105,31 +125,11 @@ public class CacheTest {
         void updatingEntryDoesNotCauseEviction(EvictionPolicy policy){
         }
 
-
-        // Replacing a value must not create an additional cache entry
-        @ParameterizedTest
-        @EnumSource(EvictionPolicy.class)
-        @Disabled("Cache class not fully set up yet")
-        void putUpdatesExistingValue(EvictionPolicy policy) {
-        }
-
-        @ParameterizedTest
-        @EnumSource(EvictionPolicy.class)
-        @Disabled("Cache class not fully set up yet")
-        void handlesCapacityOfOne(EvictionPolicy policy) {
-        }
-
         // Repeated evictions must still preserve the capacity invariant
         @ParameterizedTest
         @EnumSource(EvictionPolicy.class)
         @Disabled("Cache class not fully set up yet")
         void continuesRespectingCapacityAfterMultipleEvictions(EvictionPolicy policy) {
-        }
-
-        @ParameterizedTest
-        @EnumSource(EvictionPolicy.class)
-        @Disabled("Cache class not fully set up yet")
-        void returnsNullForCacheMiss(EvictionPolicy policy) {
         }
     }
 

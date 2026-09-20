@@ -1,11 +1,11 @@
 package com.group2.cache;
 
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 
 public class Cache<K, V> {
 
-    // To implement: capacity
     // To implement: FIFO/LRU
     // To implement: hit/miss
     // To implement: timestamp
@@ -26,6 +26,12 @@ public class Cache<K, V> {
         this.internalMap = new LinkedHashMap<>();
     }
 
+    public V get(K key){
+        Objects.requireNonNull(key, "Cache key must be non-null.");
+
+        return internalMap.get(key);
+    }
+
     public void put(K key, V value){
         Objects.requireNonNull(key, "Cache key must be non-null.");
         Objects.requireNonNull(value, "Cache value must be non-null.");
@@ -33,14 +39,13 @@ public class Cache<K, V> {
         internalMap.put(key, value);
     }
 
-    public V get(K key){
-        Objects.requireNonNull(key, "Cache key must be non-null.");
-
-        return internalMap.get(key);
-    }
-
     public int size(){
         return internalMap.size();
+    }
+
+    @Override 
+    public String toString() {
+        return internalMap.toString();
     }
 
     // **** getters ****
@@ -49,6 +54,39 @@ public class Cache<K, V> {
 
     // **** setters ****
 
+    public static void main(String[] args){
+        Cache<String, Integer> cache = new Cache<>(10, EvictionPolicy.FIFO);
+
+        System.out.println(cache);
+        System.out.println(cache.get("A"));
+        cache.put("A", 1);
+        System.out.println(cache);
+        System.out.println(cache.get("A"));
+        cache.put("B", 2);
+        System.out.println(cache);
+        cache.put("C", 1);
+        System.out.println(cache);
+        cache.put("D", 122);
+        System.out.println(cache);
+        cache.put("E", 1333);
+        System.out.println(cache);
+        cache.put("F", 1222);
+        System.out.println(cache);
+        cache.put("G", 1212);
+        System.out.println(cache);
+        cache.put("H", 12);
+        System.out.println(cache);
+        cache.put("I", 1225);
+        System.out.println(cache);
+        cache.put("J", 1622);
+        System.out.println(cache);
+        cache.put("K", 1262);
+        System.out.println(cache);
+        System.out.println(cache.size());
+        System.out.println(cache.get("P"));
+
+
+    }
 
 
 
