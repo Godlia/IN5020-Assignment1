@@ -8,6 +8,8 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import org.junit.jupiter.api.BeforeEach;
+
 
 /**
  * Tests the behavior of the {@link Cache}.
@@ -25,6 +27,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * 
  */
 public class CacheTest {
+
+    
 
 
     @Nested
@@ -44,19 +48,32 @@ public class CacheTest {
 
         @Test
         void throwsWhenNullEvictionPolicy(){
-            assertThrows(NullPointerException.class, () -> new Cache<>(5, EvictionPolicy.FIFO));
+            assertThrows(NullPointerException.class, () -> new Cache<>(5, null));
         }
 
         @ParameterizedTest
         @EnumSource(EvictionPolicy.class)
-        @Disabled("Cache class not fully set up yet")
-        void rejectsNullKey(EvictionPolicy policy) {
+        void throwsWhenNullKeyInPut(EvictionPolicy policy) {
+
+            Cache<String, Integer> cache = new Cache<>(5, policy);
+            assertThrows(NullPointerException.class, () -> cache.put(null, 5));
         }
 
         @ParameterizedTest
         @EnumSource(EvictionPolicy.class)
-        @Disabled("Cache class not fully set up yet")
-        void rejectsNullValue(EvictionPolicy policy) {
+        void throwsWhenNullValueInPut(EvictionPolicy policy) {
+
+            Cache<String, Integer> cache = new Cache<>(5, policy);
+            assertThrows(NullPointerException.class, () -> cache.put("A", null));
+
+        }
+
+        @ParameterizedTest
+        @EnumSource(EvictionPolicy.class)
+        void throwsWhenNullKeyInGet(EvictionPolicy policy) {
+
+            Cache<String, Integer> cache = new Cache<>(5, policy);
+            assertThrows(NullPointerException.class, () -> cache.get(null));
         }
     }
 
@@ -78,11 +95,13 @@ public class CacheTest {
 
         @ParameterizedTest
         @EnumSource(EvictionPolicy.class)
+        @Disabled("Cache class is not fully implemented yet")
         void doesNotEvictBeforeCapacityIsFull(EvictionPolicy policy){
         }
 
         @ParameterizedTest
         @EnumSource(EvictionPolicy.class)
+        @Disabled("Cache class is not fully implemented yet")
         void updatingEntryDoesNotCauseEviction(EvictionPolicy policy){
         }
 
@@ -118,6 +137,13 @@ public class CacheTest {
     @Nested
     class FIFOBehavior {
 
+        private Cache<String, Integer> cache;
+
+        @BeforeEach
+        void setUp() {
+            cache = new Cache<>(3, EvictionPolicy.FIFO);
+        }
+
         @Test
         @Disabled("FIFO has not been implemented yet")
         void evictsFirstInsertedEntry() {
@@ -138,6 +164,13 @@ public class CacheTest {
 
     @Nested
     class LRUBehavior {
+
+        private Cache<String, Integer> cache;
+
+        @BeforeEach
+        void setUp() {
+            cache = new Cache<>(3, EvictionPolicy.LRU);
+        }
 
         @Test
         @Disabled("LRU has not been implemented yet")

@@ -12,9 +12,9 @@ public class Cache<K, V> {
     // To implement: Javadoc
 
 
-    final private LinkedHashMap<K, V> internalMap;
-    final private int capacity;
-    final private EvictionPolicy policy;
+    private final LinkedHashMap<K, V> internalMap;
+    private final int capacity;
+    private final EvictionPolicy policy;
 
     public Cache(int capacity, EvictionPolicy policy){
         if (capacity <= 0) {
@@ -22,16 +22,25 @@ public class Cache<K, V> {
         }
 
         this.capacity = capacity;
-        this.policy = Objects.requireNonNull(policy);
+        this.policy = Objects.requireNonNull(policy, "Eviction policy must be non-null");
         this.internalMap = new LinkedHashMap<>();
     }
 
     public void put(K key, V value){
+        Objects.requireNonNull(key, "Cache key must be non-null.");
+        Objects.requireNonNull(value, "Cache value must be non-null.");
+
         internalMap.put(key, value);
     }
 
     public V get(K key){
+        Objects.requireNonNull(key, "Cache key must be non-null.");
+
         return internalMap.get(key);
+    }
+
+    public int size(){
+        return internalMap.size();
     }
 
     // **** getters ****
