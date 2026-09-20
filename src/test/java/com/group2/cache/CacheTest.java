@@ -7,6 +7,22 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+
+/**
+ * Tests the behavior of the {@link Cache}.
+ * 
+ * <p>The test suite verifies:
+ * <ul>
+ *      <li>cache invariants and invalid input handling</li>
+ *      <li>behavior shared by all cache eviction policies</li>
+ *      <li>FIFO-specific eviction behavior</li>
+ *      <li>LRU-specific eviction behavior</li>
+ * </ul></p>
+ * 
+ * <p>Policy-independent behavior is tested against every
+ * {@link EvictionPolicy} using parameterized tests.
+ * 
+ */
 public class CacheTest {
 
     // ***** Invariant checks *****
@@ -20,25 +36,24 @@ public class CacheTest {
     @ParameterizedTest
     @EnumSource(EvictionPolicy.class)
     @Disabled("Cache class not fully set up yet")
-    void rejectsNegativeCapacity() {
+    void rejectsNegativeCapacity(EvictionPolicy policy) {
+    }
+
+    @Test
+    @Disabled("Cache class not fully set up yet")
+    void rejectsNullEvictionPolicy(){
     }
 
     @ParameterizedTest
     @EnumSource(EvictionPolicy.class)
     @Disabled("Cache class not fully set up yet")
-    void rejectsNullEvictionPolicy(EvictionPolicy policy){
+    void rejectsNullKey(EvictionPolicy policy) {
     }
 
     @ParameterizedTest
     @EnumSource(EvictionPolicy.class)
     @Disabled("Cache class not fully set up yet")
-    void rejectsNullKey() {
-    }
-
-    @ParameterizedTest
-    @EnumSource(EvictionPolicy.class)
-    @Disabled("Cache class not fully set up yet")
-    void rejectsNullValue() {
+    void rejectsNullValue(EvictionPolicy policy) {
     }
 
 
@@ -56,39 +71,30 @@ public class CacheTest {
         assertEquals(1, result);
     }
     
-
-    // What happens if the same key is inserted twice?
-    // Why test this? Otherwise, the second put() could be treated as a brand-new cache entry. One key should represent one mapping.
-    // assertEquals(1, cache.size());
+    // Replacing a value must not create an additional cache entry
     @ParameterizedTest
     @EnumSource(EvictionPolicy.class)
     @Disabled("Cache class not fully set up yet")
-    void putUpdatesExistingValue() {
-    }
-
-
-    // Edge case test
-    // Checking that the cache is able to handle a cache with capacity of one
-    // Boundary values often exposes bugs
-    @ParameterizedTest
-    @EnumSource(EvictionPolicy.class)
-    @Disabled("Cache class not fully set up yet")
-    void handlesCapacityOfOne() {
-    }
-
-
-    // Checks that eviction doesnt just work once
-    // Testing invariant preservation over time
-    @ParameterizedTest
-    @EnumSource(EvictionPolicy.class)
-    @Disabled("Cache class not fully set up yet")
-    void continuesRespectingCapacityAfterMultipleEvictions() {
+    void putUpdatesExistingValue(EvictionPolicy policy) {
     }
 
     @ParameterizedTest
     @EnumSource(EvictionPolicy.class)
     @Disabled("Cache class not fully set up yet")
-    void returnsNullForCacheMiss() {
+    void handlesCapacityOfOne(EvictionPolicy policy) {
+    }
+
+    // Repeated evictions must still preserve the capacity invariant
+    @ParameterizedTest
+    @EnumSource(EvictionPolicy.class)
+    @Disabled("Cache class not fully set up yet")
+    void continuesRespectingCapacityAfterMultipleEvictions(EvictionPolicy policy) {
+    }
+
+    @ParameterizedTest
+    @EnumSource(EvictionPolicy.class)
+    @Disabled("Cache class not fully set up yet")
+    void returnsNullForCacheMiss(EvictionPolicy policy) {
     }
 
     // ***** FIFO behavior *****
@@ -103,6 +109,7 @@ public class CacheTest {
     void fifoAccessDoesNotUpdateEvictionOrder() {
     }
 
+    //Updating an existing entry is not a new entry in FIFO
     @Test
     @Disabled("FIFO has not been implemented yet")
     void fifoUpdatingEntryDoesNotChangeEvictionOrder() {
@@ -120,9 +127,10 @@ public class CacheTest {
     void lruAccessUpdatesEvictionOrder() {
     }
 
+    //Updating an existing entry will be the most recent lookup, and thus changes the structure
     @Test
     @Disabled("LRU has not been implemented yet")
-    void lruUpdatingEntryEditsMostRecent() {
+    void lruUpdatingEntryMarksAsMostRecentlyUsed() {
     }
 
 
