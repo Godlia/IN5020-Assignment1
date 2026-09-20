@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *      <li>behavior shared by all cache eviction policies</li>
  *      <li>FIFO-specific eviction behavior</li>
  *      <li>LRU-specific eviction behavior</li>
- * </ul></p>
+ * </ul>
  * 
  * <p>Policy-independent behavior is tested against every
  * {@link EvictionPolicy} using parameterized tests.
@@ -32,19 +32,19 @@ public class CacheTest {
 
         @ParameterizedTest
         @EnumSource(EvictionPolicy.class)
-        @Disabled("Cache class not fully set up yet")
-        void rejectsZeroCapacity(EvictionPolicy policy) {
+        void throwsWhenZeroCapacity(EvictionPolicy policy) {
+            assertThrows(IllegalArgumentException.class, () -> new Cache<>(0, policy));
         }
 
         @ParameterizedTest
         @EnumSource(EvictionPolicy.class)
-        @Disabled("Cache class not fully set up yet")
-        void rejectsNegativeCapacity(EvictionPolicy policy) {
+        void throwsWhenNegativeCapacity(EvictionPolicy policy) {
+            assertThrows(IllegalArgumentException.class, () -> new Cache<>(-3, policy));
         }
 
         @Test
-        @Disabled("Cache class not fully set up yet")
-        void rejectsNullEvictionPolicy(){
+        void throwsWhenNullEvictionPolicy(){
+            assertThrows(NullPointerException.class, () -> new Cache<>(5, EvictionPolicy.FIFO));
         }
 
         @ParameterizedTest
