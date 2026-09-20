@@ -6,6 +6,36 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class CacheTest {
 
+    // ***** Invariant checks *****
+
+    @Test
+    @Disabled("Cache class not fully set up yet")
+    void rejectsZeroCapacity() {
+    }
+
+    @Test
+    @Disabled("Cache class not fully set up yet")
+    void rejectsNegativeCapacity() {
+    }
+
+    @Test
+    @Disabled("Cache class not fully set up yet")
+    void rejectsNullEvictionPolicy(){
+    }
+
+    @Test
+    @Disabled("Cache class not fully set up yet")
+    void rejectsNullKey() {
+    }
+
+    @Test
+    @Disabled("Cache class not fully set up yet")
+    void rejectsNullValue() {
+    }
+
+
+    // ***** General behavior *****
+
     @Test
     void storesAndRetrievesValueFIFO() {
 
@@ -19,23 +49,74 @@ public class CacheTest {
 
     @Test
     @Disabled("Cache class not fully set up yet")
-    void doesNotExceedCapacity() {
+    void storesAndRetrievesValueLRU() {
+    }    
+    
+
+    // What happens if the same key is inserted twice?
+    // Why test this? Otherwise, the second put() could be treated as a brand-new cache entry. One key should represent one mapping.
+    // assertEquals(1, cache.size());
+    @Test
+    @Disabled("Cache class not fully set up yet")
+    void putUpdatesExistingValue() {
+    }
+
+
+    // Edge case test
+    // Checking that the cache is able to handle a cache with capacity of one
+    // Boundary values often exposes bugs
+    @Test
+    @Disabled("Cache class not fully set up yet")
+    void handlesCapacityOfOne() {
+    }
+
+
+    // 
+    @Test
+    @Disabled("Cache class not fully set up yet")
+    void continuesRespectingCapacityAfterMultipleEvictions() {
     }
 
     @Test
     @Disabled("Cache class not fully set up yet")
+    void returnsNullForCacheMiss() {
+    }
+
+    // ***** FIFO behavior *****
+
+    @Test
+    @Disabled("FIFO has not been implemented yet")
     void fifoEvictsFirstInsertedEntry() {
     }
 
     @Test
-    @Disabled("Cache class not fully set up yet")
+    @Disabled("FIFO has not been implemented yet")
+    void fifoAccessDoesNotUpdateEvictionOrder() {
+    }
+
+    @Test
+    @Disabled("FIFO has not been implemented yet")
+    void fifoUpdatingEntryDoesNotChangeEvictionOrder() {
+    }
+
+    // ***** LRU behavior *****
+
+    @Test
+    @Disabled("LRU has not been implemented yet")
     void lruEvictsLeastRecentlyUsedEntry() {
     }
 
     @Test
-    @Disabled("Cache class not fully set up yet")
-    void rejectsZeroCapacity() {
+    @Disabled("LRU has not been implemented yet")
+    void lruAccessUpdatesEvictionOrder() {
     }
+
+    @Test
+    @Disabled("LRU has not been implemented yet")
+    void lruUpdatingEntryEditsMostRecent() {
+    }
+
+
 }
     
 
