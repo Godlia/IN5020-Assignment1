@@ -1,18 +1,38 @@
 package com.group2.cache;
 
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
 public class Cache<K, V> {
 
-    // To implement: timestamp
+    private static final class CacheEntry<T> {
+        private T value;
+        private Instant lastUsed;
+
+        CacheEntry(T value) {
+            this.value = value;
+            this.lastUsed = Instant.now();
+        }
+
+        void updateTimestamp() {
+            lastUsed = Instant.now();
+        }
+
+        void updateValue(T newValue) {
+            value = newValue;
+            updateTimestamp();
+        }
+    }
+
+    // To implement: cachetype-policy
     // To implement: synchronization
     // To implement: Javadoc
 
     private static final float LOAD_FACTOR = 0.75f;
 
-    private final LinkedHashMap<K, V> internalMap;
+    private final LinkedHashMap<K, CacheEntry<V>> internalMap;
     private final int capacity;
     private final EvictionPolicy policy;
 
@@ -33,7 +53,7 @@ public class Cache<K, V> {
 
         this.internalMap = new LinkedHashMap<>(initialCapacity, LOAD_FACTOR, accessOrder){
             @Override 
-            protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+            protected boolean removeEldestEntry(Map.Entry<K, CacheEntry<V>> eldest) {
                 return size() > Cache.this.capacity;
             }
         };
@@ -41,21 +61,29 @@ public class Cache<K, V> {
 
     public V get(K key){
         validateKey(key);
-        return internalMap.get(key);
+        CacheEntry<V> entry = internalMap.get(key);
+
+        if (entry == null) {
+            return null;
+        }
+        entry.updateTimestamp();
+        return entry.value;
     }
 
     public void put(K key, V value){
         validateKeyAndValue(key, value);
-        internalMap.put(key, value);
+        CacheEntry<V> existing = internalMap.get(key);
+
+        if (existing != null) {
+            existing.updateValue(value);
+        }
+        else {
+            internalMap.put(key, new CacheEntry<V>(value));
+        }
     }
 
     public int size(){
         return internalMap.size();
-    }
-
-    @Override 
-    public String toString() {
-        return internalMap.toString();
     }
 
     private void validateKey(K key) {
