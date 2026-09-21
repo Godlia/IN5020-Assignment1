@@ -1,11 +1,12 @@
 package com.group2.client;
 
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.lang.reflect.Method;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.Arrays;
 import java.util.Scanner;
 
 import com.group2.server.ServerInterface;
@@ -30,12 +31,21 @@ public class Client {
 
 
 
-        try(Scanner fileScanner = new Scanner(queryFile)) {
+        try {
+            Scanner fileScanner = new Scanner(queryFile);
             while(fileScanner.hasNextLine()) {
                 //logic for running through file and decoding function calls & parameters
-                server.status();
+                String line = fileScanner.nextLine();
+                // Exercise explicitly says the line will have 1 methodname and a singular argument, simplifying the string parsing
+                String[] stringArr = line.split(" ");
+                Object[] callArgs = Arrays.copyOfRange(stringArr, 1, stringArr.length);
+                System.out.println(Arrays.toString(stringArr) + Arrays.toString(callArgs));
+                Method requestedMethod = ServerInterface.class.getMethod(stringArr[0]);
+
+                Object response = requestedMethod.invoke(server, callArgs);
+                System.out.println(response.toString());
             }
-        } catch (FileNotFoundException | RemoteException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

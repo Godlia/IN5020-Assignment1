@@ -1,0 +1,3 @@
+getPopulationOfCountry France
+status
+add 5 10

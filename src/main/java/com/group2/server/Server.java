@@ -8,10 +8,6 @@ import java.rmi.server.UnicastRemoteObject;
 
 public class Server implements ServerInterface{
     
-    @Override
-    public int Add(int num1, int num2) {
-        return num1 + num2;
-    }
 
     public static void main(String[] args){
         try {
@@ -46,6 +42,11 @@ public class Server implements ServerInterface{
         return 1;
     }
 
+    @Override
+    public int add(int num1, int num2) {
+        return num1 + num2;
+    }
+    
     @Override
     public boolean status() {
         return true;
