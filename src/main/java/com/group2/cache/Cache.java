@@ -40,15 +40,13 @@ public class Cache<K, V> {
         if (capacity <= 0) {
             throw new IllegalArgumentException("Maximum number of entries must be greater than zero.");
         }
-
-        this.capacity = capacity;   
-
         this.policy = Objects.requireNonNull(policy, "Eviction policy must be non-null");
         boolean accessOrder = switch (policy) {
             case FIFO -> false;
             case LRU -> true;
         };
 
+        this.capacity = capacity;   
         int initialCapacity = (int) Math.ceil(capacity + 1/LOAD_FACTOR);
 
         this.internalMap = new LinkedHashMap<>(initialCapacity, LOAD_FACTOR, accessOrder){
@@ -94,4 +92,15 @@ public class Cache<K, V> {
         validateKey(key);
         Objects.requireNonNull(value, "Cache value must be non-null.");
     }
+
+
+    Instant lastUsed(K key) {
+        for (Map.Entry<K, CacheEntry<V>> e : internalMap.entrySet()) {
+            if (e.getKey().equals(key)) {
+                return e.getValue().lastUsed;
+            }
+        }
+        return null;
+    }
+
 }

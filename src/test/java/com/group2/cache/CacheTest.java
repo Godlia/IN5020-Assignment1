@@ -1,6 +1,8 @@
 package com.group2.cache;
 
+import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -331,6 +333,45 @@ public class CacheTest {
             assertNull(cache.get("B"));
         }
     }
+
+    @Nested
+    @DisplayName("Timestamp behavior")
+    class TimestampBehavior {
+
+        @ParameterizedTest(name = "{displayName} [{0}]")
+        @EnumSource(EvictionPolicy.class)
+        @DisplayName("A new entry creates a timestamp")
+        void newEntryHasTimestamp(EvictionPolicy policy){
+
+            Cache<String, Integer> cache = new Cache<>(3, policy);
+
+            Instant before = Instant.now();
+            cache.put("A", 1);
+            Instant after = Instant.now();
+
+            Instant stamp = cache.lastUsed("A");
+
+            assertAll(
+                () -> assertNotNull(stamp),
+                () -> assertFalse(stamp.isBefore(before)),
+                () -> assertFalse(stamp.isAfter(after))
+            );
+        }
+
+        @ParameterizedTest(name = "{displayName} [{0}]")
+        @EnumSource(EvictionPolicy.class)
+        @DisplayName("get() on an existing key updates its timestamp")
+        void getUpdatesTimestamp(EvictionPolicy policy) throws InterruptedException {
+
+            Cache<String, Integer> cache = new Cache<>(3, policy);
+            cache.put("A", 1);
+            Instant first = cache.lastUsed("A");
+            Thread.sleep(5);
+            cache.get("A");
+
+            assertTrue(cache.lastUsed("A").isAfter(first));
+        }
+    }   
 }
     
 
