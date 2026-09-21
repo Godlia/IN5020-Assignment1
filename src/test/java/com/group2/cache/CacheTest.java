@@ -1,6 +1,6 @@
 package com.group2.cache;
 
-import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -9,7 +9,6 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import org.junit.jupiter.api.BeforeEach;
 
 
 /**
@@ -31,16 +30,17 @@ public class CacheTest {
 
 
     @Nested
+    @DisplayName("Invariant checks")
     class InvariantChecks {
 
-        @ParameterizedTest
+        @ParameterizedTest(name = "{displayName} [{0}]")
         @EnumSource(EvictionPolicy.class)
         @DisplayName("Throws exception when capacity is 0")
         void throwsWhenZeroCapacity(EvictionPolicy policy) {
             assertThrows(IllegalArgumentException.class, () -> new Cache<>(0, policy));
         }
 
-        @ParameterizedTest
+        @ParameterizedTest(name = "{displayName} [{0}]")
         @EnumSource(EvictionPolicy.class)
         @DisplayName("Throws exception when capacity is negative")
         void throwsWhenNegativeCapacity(EvictionPolicy policy) {
@@ -53,7 +53,7 @@ public class CacheTest {
             assertThrows(NullPointerException.class, () -> new Cache<>(5, null));
         }
 
-        @ParameterizedTest
+        @ParameterizedTest(name = "{displayName} [{0}]")
         @EnumSource(EvictionPolicy.class)
         @DisplayName("Throws exception when the cache key is null in put()")
         void throwsWhenNullKeyInPut(EvictionPolicy policy) {
@@ -62,7 +62,7 @@ public class CacheTest {
             assertThrows(NullPointerException.class, () -> cache.put(null, 5));
         }
 
-        @ParameterizedTest
+        @ParameterizedTest(name = "{displayName} [{0}]")
         @EnumSource(EvictionPolicy.class)
         @DisplayName("Throws exception when the cache value is null in put()")
         void throwsWhenNullValueInPut(EvictionPolicy policy) {
@@ -71,7 +71,7 @@ public class CacheTest {
             assertThrows(NullPointerException.class, () -> cache.put("A", null));
         }
 
-        @ParameterizedTest
+        @ParameterizedTest(name = "{displayName} [{0}]")
         @EnumSource(EvictionPolicy.class)
         @DisplayName("Throws exception when the cache key is null in get()")
         void throwsWhenNullKeyInGet(EvictionPolicy policy) {
@@ -83,9 +83,10 @@ public class CacheTest {
 
 
     @Nested
+    @DisplayName("General cache behavior")
     class GeneralBehavior {
 
-        @ParameterizedTest
+        @ParameterizedTest(name = "{displayName} [{0}]")
         @EnumSource(EvictionPolicy.class)
         @DisplayName("Can store a value and return it")
         void storesAndRetrievesValue(EvictionPolicy policy) {
@@ -98,7 +99,7 @@ public class CacheTest {
             assertEquals(1, result);
         }
 
-        @ParameterizedTest
+        @ParameterizedTest(name = "{displayName} [{0}]")
         @EnumSource(EvictionPolicy.class)
         @DisplayName("Will return null if cache miss") 
         void returnsNullForCacheMiss(EvictionPolicy policy) {
@@ -107,7 +108,7 @@ public class CacheTest {
             assertNull(cache.get("A"));
         }
 
-        @ParameterizedTest
+        @ParameterizedTest(name = "{displayName} [{0}]")
         @EnumSource(EvictionPolicy.class)
         @DisplayName("Inserting a second entry into a capacity-one cache evicts the first") 
         void insertingSecondEntryEvictsFirstWhenCapacityIsOne(EvictionPolicy policy) {
@@ -124,9 +125,9 @@ public class CacheTest {
             );
         }
 
-        @ParameterizedTest
+        @ParameterizedTest(name = "{displayName} [{0}]")
         @EnumSource(EvictionPolicy.class)
-        @DisplayName("put() updates an entry and does not create an additional")
+        @DisplayName("put() updates an entry and does not create an another entry")
         void putUpdatesExistingValue(EvictionPolicy policy) {
 
             Cache<String, Integer> cache = new Cache<>(5, policy);
@@ -135,12 +136,13 @@ public class CacheTest {
             cache.put("B", 2);
             cache.put("C", 3);
 
-            int initialSize = cache.size();
+            Integer initialSize = cache.size();
 
+            // updating an existing element should not create another element
             cache.put("B", 5);
 
-            int modifiedSize = cache.size();
-            int modifiedValue = cache.get("B");
+            Integer modifiedSize = cache.size();
+            Integer modifiedValue = cache.get("B");
 
             assertAll("put update properties", 
                 () -> assertEquals(initialSize, modifiedSize),
@@ -148,36 +150,72 @@ public class CacheTest {
             );
         }
 
-        @ParameterizedTest
+        @ParameterizedTest(name = "{displayName} [{0}]")
         @EnumSource(EvictionPolicy.class)
         @DisplayName("The cache must not evict before reaching capacity") 
-        @Disabled("Cache class is not fully implemented yet")
         void doesNotEvictBeforeCapacityIsFull(EvictionPolicy policy){
 
-            Cache<String, Integer> cache = new Cache<>(5, policy);
+            Cache<String, Integer> cache = new Cache<>(3, policy);
 
+            cache.put("A", 1);
+            cache.put("B", 2);
+            cache.put("C", 3);
 
-
-
+            assertAll("all entries remain",
+                () -> assertEquals(3, cache.size()),
+                () -> assertEquals(1, cache.get("A")),
+                () -> assertEquals(2, cache.get("B")),
+                () -> assertEquals(3, cache.get("C"))
+            );
         }
 
-        @ParameterizedTest
+        @ParameterizedTest(name = "{displayName} [{0}]")
         @EnumSource(EvictionPolicy.class)
         @DisplayName("Updating an entry does not start eviction")
-        @Disabled("Cache class is not fully implemented yet")
         void updatingEntryDoesNotCauseEviction(EvictionPolicy policy){
+
+            Cache<String, Integer> cache = new Cache<>(3, policy);
+
+            cache.put("A", 1);
+            cache.put("B", 2);
+            cache.put("C", 3);
+
+            cache.put("B", 5);
+
+            assertAll("all entries remain after update",
+                () -> assertEquals(3, cache.size()),
+                () -> assertEquals(1, cache.get("A")),
+                () -> assertEquals(5, cache.get("B")),
+                () -> assertEquals(3, cache.get("C"))
+            );
+            
         }
 
-        @ParameterizedTest
+        @ParameterizedTest(name = "{displayName} [{0}]")
         @EnumSource(EvictionPolicy.class)
-        @DisplayName("The eviction algorithm still preserves the capacity invariant") 
-        @Disabled("Cache class not fully set up yet")
+        @DisplayName("Repeated evictions preserve the capacity invariant") 
         void continuesRespectingCapacityAfterMultipleEvictions(EvictionPolicy policy) {
+
+            Cache<String, Integer> cache = new Cache<>(3, policy);
+
+            cache.put("A", 1);
+            cache.put("B", 2);
+            cache.put("C", 3);
+
+            cache.put("D", 4);
+            assertEquals(3, cache.size());
+
+            cache.put("E", 5);
+            assertEquals(3, cache.size());
+
+            cache.put("F", 6);
+            assertEquals(3, cache.size());
         }
     }
 
 
     @Nested
+    @DisplayName("FIFO behavior")
     class FIFOBehavior {
 
         private Cache<String, Integer> cache;
@@ -185,29 +223,58 @@ public class CacheTest {
         @BeforeEach
         void setUp() {
             cache = new Cache<>(3, EvictionPolicy.FIFO);
+
+            cache.put("A", 1);
+            cache.put("B", 2);
+            cache.put("C", 3);
         }
 
         @Test
         @DisplayName("FIFO is able to evict first inserted entry when full")
-        @Disabled("FIFO has not been implemented yet")
         void evictsFirstInsertedEntry() {
+
+            // inserting a fourth entry to exceed capacity and trigger eviction
+            cache.put("D", 4);
+
+            assertAll(
+                () -> assertEquals(3, cache.size()),
+                () -> assertNull(cache.get("A")),
+                () -> assertEquals(2, cache.get("B")),
+                () -> assertEquals(3, cache.get("C")),
+                () -> assertEquals(4, cache.get("D"))
+            );
         }
 
         @Test
         @DisplayName("FIFO does not update order when running get()") 
-        @Disabled("FIFO has not been implemented yet")
         void accessDoesNotUpdateEvictionOrder() {
+
+            // accessing A must not affect insertion order in FIFO.
+            cache.get("A");
+
+            // exceeding capacity to trigger eviction
+            cache.put("D", 4);
+
+            assertNull(cache.get("A"));
         }
 
         @Test
         @DisplayName("Updating an existing entry is not a new entry in FIFO")
-        @Disabled("FIFO has not been implemented yet")
         void updatingEntryDoesNotChangeEvictionOrder() {
+
+            // updating A must preserve its original insertion position in FIFO
+            cache.put("A", 100);
+
+            // exceeding capacity to trigger eviction
+            cache.put("D", 4);
+
+            assertNull(cache.get("A"));
         }
     }
 
 
     @Nested
+    @DisplayName("LRU behavior")
     class LRUBehavior {
 
         private Cache<String, Integer> cache;
@@ -215,25 +282,53 @@ public class CacheTest {
         @BeforeEach
         void setUp() {
             cache = new Cache<>(3, EvictionPolicy.LRU);
+
+            cache.put("A", 1);
+            cache.put("B", 2);
+            cache.put("C", 3);
         }
 
         @Test
         @DisplayName("LRU evicts the least recently used entry")
-        @Disabled("LRU has not been implemented yet")
         void evictsLeastRecentlyUsedEntry() {
+
+            // inserting a fourth entry to exceed capacity and trigger eviction
+            cache.put("D", 4);
+
+            assertNull(cache.get("A"));
+
+            assertAll(
+                () -> assertEquals(3, cache.size()),
+                () -> assertNull(cache.get("A")),
+                () -> assertEquals(2, cache.get("B")),
+                () -> assertEquals(3, cache.get("C")),
+                () -> assertEquals(4, cache.get("D"))
+            );
         }
 
         @Test
         @DisplayName("Using get() on a key will update that recency")
-        @Disabled("LRU has not been implemented yet")
         void accessUpdatesEvictionOrder() {
+
+            // A becomes the most recently used entry and B is now the least recent
+            cache.get("A");
+
+            // exceeding capacity to trigger eviction
+            cache.put("D", 4);
+
+            assertNull(cache.get("B"));
         }
 
-        //Updating an existing entry will be the most recent lookup, and thus changes the structure
         @Test
-        @DisplayName("Caching an existing element updates the recency of that element")
-        @Disabled("LRU has not been implemented yet")
+        @DisplayName("Updating an existing element makes it most recently used")
         void updatingEntryMarksAsMostRecentlyUsed() {
+
+            // updating A counts as access, making B the least recently used entry
+            cache.put("A", 100);
+
+            cache.put("D", 4);
+
+            assertNull(cache.get("B"));
         }
     }
 }
