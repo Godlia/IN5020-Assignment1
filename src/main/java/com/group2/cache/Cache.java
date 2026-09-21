@@ -5,7 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
-public class Cache<K, V> {
+public final class Cache<K, V> {
 
     private static final class CacheEntry<T> {
         private T value;
@@ -26,8 +26,6 @@ public class Cache<K, V> {
         }
     }
 
-    // To implement: cachetype-policy
-    // To implement: synchronization
     // To implement: Javadoc
 
     private static final float LOAD_FACTOR = 0.75f;
@@ -36,7 +34,14 @@ public class Cache<K, V> {
     private final int capacity;
     private final EvictionPolicy policy;
 
-    public Cache(int capacity, EvictionPolicy policy){
+    // Static factory method
+    public static <K, V> Cache<K, V> create(CacheType type, EvictionPolicy policy) {
+        Objects.requireNonNull(type, "Cache type must be non-null");
+        return new Cache<>(type.capacity(), policy);
+    }
+
+    // Making the constructor package private to be available for tests but not for the server and client
+    Cache(int capacity, EvictionPolicy policy){
         if (capacity <= 0) {
             throw new IllegalArgumentException("Maximum number of entries must be greater than zero.");
         }
@@ -47,7 +52,7 @@ public class Cache<K, V> {
         };
 
         this.capacity = capacity;   
-        int initialCapacity = (int) Math.ceil(capacity + 1/LOAD_FACTOR);
+        int initialCapacity = (int) Math.ceil((capacity + 1)/LOAD_FACTOR);
 
         this.internalMap = new LinkedHashMap<>(initialCapacity, LOAD_FACTOR, accessOrder){
             @Override 
@@ -57,7 +62,7 @@ public class Cache<K, V> {
         };
     }
 
-    public V get(K key){
+    public synchronized V get(K key){
         validateKey(key);
         CacheEntry<V> entry = internalMap.get(key);
 
@@ -68,7 +73,7 @@ public class Cache<K, V> {
         return entry.value;
     }
 
-    public void put(K key, V value){
+    public synchronized void put(K key, V value){
         validateKeyAndValue(key, value);
         CacheEntry<V> existing = internalMap.get(key);
 
@@ -76,12 +81,16 @@ public class Cache<K, V> {
             existing.updateValue(value);
         }
         else {
-            internalMap.put(key, new CacheEntry<V>(value));
+            internalMap.put(key, new CacheEntry<>(value));
         }
     }
 
-    public int size(){
+    public synchronized int size(){
         return internalMap.size();
+    }
+
+    public EvictionPolicy getEvictionPolicy(){
+        return this.policy;
     }
 
     private void validateKey(K key) {
@@ -94,7 +103,7 @@ public class Cache<K, V> {
     }
 
 
-    Instant lastUsed(K key) {
+    synchronized Instant lastUsed(K key) {
         for (Map.Entry<K, CacheEntry<V>> e : internalMap.entrySet()) {
             if (e.getKey().equals(key)) {
                 return e.getValue().lastUsed;

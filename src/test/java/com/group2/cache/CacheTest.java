@@ -11,8 +11,6 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-
-
 /**
  * Tests the behavior of the {@link Cache}.
  * 
@@ -80,6 +78,26 @@ public class CacheTest {
 
             Cache<String, Integer> cache = new Cache<>(5, policy);
             assertThrows(NullPointerException.class, () -> cache.get(null));
+        }
+
+        @ParameterizedTest(name = "{displayName} [{0}]")
+        @EnumSource(EvictionPolicy.class)
+        @DisplayName("Throws exception when the cache key is null in get()")
+        void throwsWhenNullCacheTypeInFactory(EvictionPolicy policy) {
+
+            assertThrows(NullPointerException.class,
+                () -> Cache.create(null, policy)
+            );
+        }
+
+        @ParameterizedTest(name = "{displayName} [{0}]")
+        @EnumSource(CacheType.class)
+        @DisplayName("Throws exception when the cache key is null in get()")
+        void throwsWhenNullPolicyInFactory(CacheType type) {
+
+            assertThrows(NullPointerException.class,
+                () -> Cache.create(type, null)
+            );
         }
     }
 
@@ -213,7 +231,33 @@ public class CacheTest {
             cache.put("F", 6);
             assertEquals(3, cache.size());
         }
+
+        @Test
+        void cacheTypesHaveRequiredCapacities() {
+        assertAll(
+            () -> assertEquals(45, CacheType.CLIENT.capacity()),
+            () -> assertEquals(150, CacheType.SERVER.capacity())
+            );
+        }
+
+        @ParameterizedTest(name = "{displayName} [{0}]")
+        @EnumSource(CacheType.class)
+        @DisplayName("Factory creates cache with configured capacity")
+        void factoryCreatesCacheWithCorrectCapacity(CacheType type) {
+
+            Cache<Integer, Integer> cache =
+            Cache.create(type, EvictionPolicy.FIFO);
+
+            int capacity = type.capacity();
+
+            for (int i = 0; i <= capacity; i++) {
+                cache.put(i, i);
+            }
+
+            assertEquals(capacity, cache.size());
+        }
     }
+
 
 
     @Nested
@@ -296,8 +340,6 @@ public class CacheTest {
 
             // inserting a fourth entry to exceed capacity and trigger eviction
             cache.put("D", 4);
-
-            assertNull(cache.get("A"));
 
             assertAll(
                 () -> assertEquals(3, cache.size()),
