@@ -45,11 +45,6 @@ public class Server implements ServerInterface{
     public int getNumberofCountriesMM(int citycount, int minpopulation, int maxpopulation) {
         return 1;
     }
-
-    @Override
-    public int add(int num1, int num2) {
-        return num1 + num2;
-    }
     
     @Override
     public boolean status() {
