@@ -6,30 +6,30 @@ import java.util.Objects;
 
 public class Cache<K, V> {
 
-    // To implement: FIFO/LRU
-    // To implement: hit/miss
     // To implement: timestamp
+    // To implement: synchronization
     // To implement: Javadoc
 
     private static final float LOAD_FACTOR = 0.75f;
 
     private final LinkedHashMap<K, V> internalMap;
     private final int capacity;
+    private final EvictionPolicy policy;
 
     public Cache(int capacity, EvictionPolicy policy){
         if (capacity <= 0) {
             throw new IllegalArgumentException("Maximum number of entries must be greater than zero.");
         }
 
-        this.capacity = capacity;
+        this.capacity = capacity;   
 
-        Objects.requireNonNull(policy, "Eviction policy must be non-null");
+        this.policy = Objects.requireNonNull(policy, "Eviction policy must be non-null");
         boolean accessOrder = switch (policy) {
             case FIFO -> false;
             case LRU -> true;
         };
 
-        int initialCapacity = (int) Math.ceil(capacity/LOAD_FACTOR);
+        int initialCapacity = (int) Math.ceil(capacity + 1/LOAD_FACTOR);
 
         this.internalMap = new LinkedHashMap<>(initialCapacity, LOAD_FACTOR, accessOrder){
             @Override 
