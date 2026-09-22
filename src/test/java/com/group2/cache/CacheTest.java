@@ -1,5 +1,6 @@
 package com.group2.cache;
 
+import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -8,8 +9,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import static org.junit.jupiter.api.Assertions.*;
-
-
 
 /**
  * Tests the behavior of the {@link Cache}.
@@ -78,6 +77,26 @@ public class CacheTest {
 
             Cache<String, Integer> cache = new Cache<>(5, policy);
             assertThrows(NullPointerException.class, () -> cache.get(null));
+        }
+
+        @ParameterizedTest(name = "{displayName} [{0}]")
+        @EnumSource(EvictionPolicy.class)
+        @DisplayName("Throws exception when the cache key is null in get()")
+        void throwsWhenNullCacheTypeInFactory(EvictionPolicy policy) {
+
+            assertThrows(NullPointerException.class,
+                () -> Cache.create(null, policy)
+            );
+        }
+
+        @ParameterizedTest(name = "{displayName} [{0}]")
+        @EnumSource(CacheType.class)
+        @DisplayName("Throws exception when the cache key is null in get()")
+        void throwsWhenNullPolicyInFactory(CacheType type) {
+
+            assertThrows(NullPointerException.class,
+                () -> Cache.create(type, null)
+            );
         }
     }
 
@@ -211,7 +230,33 @@ public class CacheTest {
             cache.put("F", 6);
             assertEquals(3, cache.size());
         }
+
+        @Test
+        void cacheTypesHaveRequiredCapacities() {
+        assertAll(
+            () -> assertEquals(45, CacheType.CLIENT.capacity()),
+            () -> assertEquals(150, CacheType.SERVER.capacity())
+            );
+        }
+
+        @ParameterizedTest(name = "{displayName} [{0}]")
+        @EnumSource(CacheType.class)
+        @DisplayName("Factory creates cache with configured capacity")
+        void factoryCreatesCacheWithCorrectCapacity(CacheType type) {
+
+            Cache<Integer, Integer> cache =
+            Cache.create(type, EvictionPolicy.FIFO);
+
+            int capacity = type.capacity();
+
+            for (int i = 0; i <= capacity; i++) {
+                cache.put(i, i);
+            }
+
+            assertEquals(capacity, cache.size());
+        }
     }
+
 
 
     @Nested
@@ -295,8 +340,6 @@ public class CacheTest {
             // inserting a fourth entry to exceed capacity and trigger eviction
             cache.put("D", 4);
 
-            assertNull(cache.get("A"));
-
             assertAll(
                 () -> assertEquals(3, cache.size()),
                 () -> assertNull(cache.get("A")),
@@ -331,6 +374,45 @@ public class CacheTest {
             assertNull(cache.get("B"));
         }
     }
+
+    @Nested
+    @DisplayName("Timestamp behavior")
+    class TimestampBehavior {
+
+        @ParameterizedTest(name = "{displayName} [{0}]")
+        @EnumSource(EvictionPolicy.class)
+        @DisplayName("A new entry creates a timestamp")
+        void newEntryHasTimestamp(EvictionPolicy policy){
+
+            Cache<String, Integer> cache = new Cache<>(3, policy);
+
+            Instant before = Instant.now();
+            cache.put("A", 1);
+            Instant after = Instant.now();
+
+            Instant stamp = cache.lastUsed("A");
+
+            assertAll(
+                () -> assertNotNull(stamp),
+                () -> assertFalse(stamp.isBefore(before)),
+                () -> assertFalse(stamp.isAfter(after))
+            );
+        }
+
+        @ParameterizedTest(name = "{displayName} [{0}]")
+        @EnumSource(EvictionPolicy.class)
+        @DisplayName("get() on an existing key updates its timestamp")
+        void getUpdatesTimestamp(EvictionPolicy policy) throws InterruptedException {
+
+            Cache<String, Integer> cache = new Cache<>(3, policy);
+            cache.put("A", 1);
+            Instant first = cache.lastUsed("A");
+            Thread.sleep(5);
+            cache.get("A");
+
+            assertTrue(cache.lastUsed("A").isAfter(first));
+        }
+    }   
 }
     
 

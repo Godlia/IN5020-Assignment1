@@ -59,11 +59,11 @@ rmiregistry
 #### Terminal 2
 
 ```bash
-java -cp ./target/ass1-1.0-SNAPSHOT.jar com.group2.server.Server
+java -cp ./target/assignment1.jar com.group2.server.Server
 ```
 
 #### Terminal 3
 
 ```bash
-java -cp ./target/ass1-1.0-SNAPSHOT.jar com.group2.client.Client
+java -cp ./target/assignment1.jar com.group2.client.Client
 ```
