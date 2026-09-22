@@ -1,0 +1,11 @@
+# .dockerignore
+# Keep the build context small: only pom.xml, app/, resources/ and docker/ are needed.
+.git
+.vscode
+.idea
+target
+book-original
+docker-tutorial-leftovers
+node_modules
+*.md
+scripts
