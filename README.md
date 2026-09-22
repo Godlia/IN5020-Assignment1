@@ -2,7 +2,6 @@
 
 Akkurat nå så er dette basically bare en clone av eksempel prosjektet vi har fått fra TA
 
-
 ## Arbeidsfordeling
 
 * Eirik
@@ -35,12 +34,15 @@ Jeg tror ikke det skader at vi har noen ansvar som overlapper, generelt lurt at 
 All commands are run in the root folder
 
 Linux / WSL / macOS:
+
 ```bash
-./mvnw clean compile jar:jar
+./mvnw clean package
 ```
+
 Windows:
+
 ```bash
-.\mvnw.cmd clean compile jar:jar
+.\mvnw.cmd clean package
 ```
 
 **Temp forklaring til medstudenter**

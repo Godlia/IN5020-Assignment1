@@ -2,3 +2,4 @@ target/
 solution.jar
 .vscode/
 .idea/
+*.db
