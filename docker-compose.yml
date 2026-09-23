@@ -1,0 +1,60 @@
+name: IN5020
+
+services:
+  proxy:
+    build: .
+    environment:
+      APP_ROLE: proxy
+    ports:
+      - "1099:1099"
+
+  server1:
+    build: .
+    environment:
+      APP_ROLE: server
+      SERVER_ZONE: 1
+      SERVER_HOST: server1
+
+  server2:
+    build: .
+    environment:
+      APP_ROLE: server
+      SERVER_ZONE: 2
+      SERVER_HOST: server2
+
+  server3:
+    build: .
+    environment:
+      APP_ROLE: server
+      SERVER_ZONE: 3
+      SERVER_HOST: server3
+
+  server4:
+    build: .
+    environment:
+      APP_ROLE: server
+      SERVER_ZONE: 4
+      SERVER_HOST: server4
+
+  server5:
+    build: .
+    environment:
+      APP_ROLE: server
+      SERVER_ZONE: 5
+      SERVER_HOST: server5
+
+
+  client:
+    build: .
+    environment:
+      APP_ROLE: client
+      QUERY_FILE: /in5020/exercise_1_input.txt
+    volumes:
+      - ./exercise_1_input.txt:/in5020/exercise_1_input.txt:ro
+    depends_on:
+      - proxy
+      - server1
+      - server2
+      - server3
+      - server4
+      - server5

@@ -30,10 +30,10 @@ public class Server implements ServerInterface {
     public static void main(String[] args) {
         try {
             int zone = args.length > 0 ? Integer.parseInt(args[0]) : 1;
-            String serverHost = "localhost";
+            String serverHost = System.getenv().getOrDefault("SERVER_HOST", "localhost");
             String boundName = "server-zone" + zone;
 
-            Registry registry = LocateRegistry.getRegistry(serverHost, 1099);
+            Registry registry = LocateRegistry.createRegistry(1099);
             Server server = new Server();
             ServerInterface serverStub = (ServerInterface) UnicastRemoteObject.exportObject(server, 0);
             registry.bind(boundName, serverStub);
@@ -89,7 +89,7 @@ public class Server implements ServerInterface {
     }
 
     private static void registerWithProxy(String serverHost, int serverPort, String serverName) {
-        String proxyHost = "localhost";
+        String proxyHost = "proxy";
         int proxyPort = 1099;
         String proxyName = "proxy";
         try {

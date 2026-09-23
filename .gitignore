@@ -3,3 +3,5 @@ solution.jar
 .vscode/
 .idea/
 *.db
+client-output.txt
+*.excalidraw

@@ -25,8 +25,14 @@ public class Client {
 
     public static void main(String[] args) {
         try (Scanner stdinScanner = new Scanner(System.in)) {
-            System.out.println("Input file path to queryset: ");
-            String filePath = stdinScanner.nextLine();
+            String envFile = System.getenv("QUERY_FILE");
+            String filePath = envFile != null && !envFile.isBlank() ? envFile : null;
+
+            if (filePath == null) {
+                System.out.println("Input file path to queryset: ");
+                filePath = stdinScanner.nextLine();
+            }
+
             File queryFile = new File(filePath);
             if (!queryFile.exists()) {
                 throw new IllegalArgumentException("Input file does not exist: " + filePath);
@@ -146,7 +152,7 @@ public class Client {
     }
 
     private static ServerInterface connectToServer(int zone) throws RemoteException, NotBoundException {
-        ServerAdress proxyAdress = new ServerAdress("localhost", 1099, "proxy");
+        ServerAdress proxyAdress = new ServerAdress("proxy", 1099, "proxy");
         ProxyInterface proxy = (ProxyInterface) getStub(proxyAdress);
         ServerAdress serverAdress = proxy.RequestServer(zone);
         if (serverAdress == null) {
