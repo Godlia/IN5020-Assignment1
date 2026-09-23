@@ -143,11 +143,9 @@ public class Proxy implements ProxyInterface{
         queueRefreshExecutor.submit(() -> {
             ServerAdress address = server.getServerAdress();
             try {
-                // Assumption: the registered server exposes getQueLength() through
-                // its RMI binding and returns its current waiting-list length.
                 Registry registry = LocateRegistry.getRegistry(address.getIpAddress(), address.getPort());
                 ServerInterface serverStub = (ServerInterface) registry.lookup(address.getServerName());
-                int queueLength = serverStub.getQueLength();
+                int queueLength = serverStub.getQueueLength();
                 synchronized (this) {
                     server.setQueLength(queueLength);
                 }

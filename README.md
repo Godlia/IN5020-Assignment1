@@ -27,7 +27,7 @@ Jeg tror ikke det skader at vi har noen ansvar som overlapper, generelt lurt at 
 ## Requirements
 
 * Java 21 (JDK)
-* Maven
+* Maven (A wrapper has been included for convenience)
 
 ## Installing and running
 
@@ -51,17 +51,16 @@ Jeg leste meg opp litt, og forstod at det er lurt å ha en Maven wrapper, altså
 
 ### Now open three other terminals and run these commands in each
 
-#### Terminal 1 (RMI registry)
+#### Terminal 1 (Proxy)
 
 ```bash
-cd ./target/classes
-rmiregistry
+java -cp ./target/assignment1.jar com.group2.proxy.Proxy
 ```
 
 #### Terminal 2
 
 ```bash
-java -cp ./target/assignment1.jar com.group2.server.Server
+java -cp ./target/assignment1.jar com.group2.server.Server {ZONE}
 ```
 
 #### Terminal 3

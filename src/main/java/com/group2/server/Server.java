@@ -29,19 +29,18 @@ public class Server implements ServerInterface {
 
     public static void main(String[] args) {
         try {
-            Registry registry = LocateRegistry.getRegistry();
-            Server server = new Server();
-            ServerInterface serverStub = (ServerInterface) UnicastRemoteObject.exportObject(server, 1099);
-            registry.bind("server", serverStub);
-            int zone = Integer.parseInt(args[1]);
-            String serverHost = "server-zone" + zone;
-            registerWithProxy(serverHost, 1099, "server");
+            int zone = args.length > 0 ? Integer.parseInt(args[0]) : 1;
+            String serverHost = "localhost";
+            String boundName = "server-zone" + zone;
 
-            
+            Registry registry = LocateRegistry.getRegistry(serverHost, 1099);
+            Server server = new Server();
+            ServerInterface serverStub = (ServerInterface) UnicastRemoteObject.exportObject(server, 0);
+            registry.bind(boundName, serverStub);
+            registerWithProxy(serverHost, 1099, boundName);
         } catch (RemoteException | AlreadyBoundException | SQLException e) {
             e.printStackTrace();
         }
-
     }
 
     @Override
@@ -85,12 +84,12 @@ public class Server implements ServerInterface {
     }
 
     @Override
-    public int getQueLength() {
+    public int getQueueLength() {
         return 0; // NOTE: Needs to be implemented
     }
 
     private static void registerWithProxy(String serverHost, int serverPort, String serverName) {
-        String proxyHost = "proxy";
+        String proxyHost = "localhost";
         int proxyPort = 1099;
         String proxyName = "proxy";
         try {
@@ -98,6 +97,7 @@ public class Server implements ServerInterface {
             ProxyInterface proxyStub = (ProxyInterface) registry.lookup(proxyName);
             ServerAdress serverAdress = new ServerAdress(serverHost, serverPort, serverName);
             proxyStub.RegisterServer(serverAdress);
+            System.out.println("Registered server on " + serverHost + ":" + serverPort + " with proxy.");
         } catch (RemoteException | NotBoundException e) {
             e.printStackTrace();
         }
