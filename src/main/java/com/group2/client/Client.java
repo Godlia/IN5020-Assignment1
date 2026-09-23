@@ -22,7 +22,6 @@ public class Client {
         try {
             registry = LocateRegistry.getRegistry();
             server = (ServerInterface) registry.lookup("server");
-            if(!server.status()) throw new RemoteException("Server responded NOK");
         } catch (RemoteException | NotBoundException e) {
             e.printStackTrace();
         }
