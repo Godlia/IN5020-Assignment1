@@ -7,6 +7,13 @@ services:
       APP_ROLE: proxy
     ports:
       - "1099:1099"
+    healthcheck:
+      test: ["CMD", "java", "-cp", "/in5020/target/assignment1.jar", "com.group2.proxy.ProxyHealthCheck"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 2s
+    
 
   server1:
     build: .
@@ -15,7 +22,8 @@ services:
       SERVER_ZONE: 1
       SERVER_HOST: server1
     depends_on:
-      - proxy
+      proxy:
+        condition: service_healthy
 
   server2:
     build: .
@@ -24,7 +32,8 @@ services:
       SERVER_ZONE: 2
       SERVER_HOST: server2
     depends_on:
-      - proxy
+      proxy:
+        condition: service_healthy
 
   server3:
     build: .
@@ -33,7 +42,8 @@ services:
       SERVER_ZONE: 3
       SERVER_HOST: server3
     depends_on:
-      - proxy
+      proxy:
+        condition: service_healthy
 
   server4:
     build: .
@@ -42,7 +52,8 @@ services:
       SERVER_ZONE: 4
       SERVER_HOST: server4
     depends_on:
-      - proxy
+      proxy:
+        condition: service_healthy
 
   server5:
     build: .
@@ -51,7 +62,8 @@ services:
       SERVER_ZONE: 5
       SERVER_HOST: server5
     depends_on:
-      - proxy
+      proxy:
+        condition: service_healthy
 
 
   client:
@@ -62,9 +74,15 @@ services:
     volumes:
       - ./exercise_1_input.txt:/in5020/exercise_1_input.txt:ro
     depends_on:
-      - proxy
-      - server1
-      - server2
-      - server3
-      - server4
-      - server5
+      proxy:
+        condition: service_healthy
+      server1:
+        condition: service_started
+      server2:
+        condition: service_started
+      server3:
+        condition: service_started
+      server4:
+        condition: service_started
+      server5:
+        condition: service_started
