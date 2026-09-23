@@ -10,77 +10,41 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Scanner;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import com.group2.proxy.ProxyInterface;
 import com.group2.server.ServerInterface;
 import com.group2.utils.serverAdress.ServerAdress;
 
 public class Client {
-    private static final int T = 50;
-    private static final String OUTPUT_FILE = "client-output.txt";
+    private static final int DEFAULT_DELAY_MS = 50;
+    private static final String DEFAULT_OUTPUT_FILE = "client-output.txt";
+    private static final List<String> QUERY_METHODS = List.of(
+            "getPopulationofCountry",
+            "getNumberofCities",
+            "getNumberofCountries",
+            "getNumberofCountriesMM");
 
     public static void main(String[] args) {
         try (Scanner stdinScanner = new Scanner(System.in)) {
-            String envFile = System.getenv("QUERY_FILE");
-            String filePath = envFile != null && !envFile.isBlank() ? envFile : null;
-
-            if (filePath == null) {
-                System.out.println("Input file path to queryset: ");
-                filePath = stdinScanner.nextLine();
-            }
-
-            File queryFile = new File(filePath);
-            if (!queryFile.exists()) {
-                throw new IllegalArgumentException("Input file does not exist: " + filePath);
-            }
-
+            File queryFile = resolveQueryFile(stdinScanner);
+            List<QueryRequest> requests = readQueries(queryFile);
+            List<QueryResult> results = executeQueries(requests);
             List<String> outputLines = new ArrayList<>();
-            Map<String, List<Long>> methodStats = new HashMap<>();
-            methodStats.put("getPopulationofCountry", new ArrayList<>());
-            methodStats.put("getNumberofCities", new ArrayList<>());
-            methodStats.put("getNumberofCountries", new ArrayList<>());
-            methodStats.put("getNumberofCountriesMM", new ArrayList<>());
 
-            try (Scanner fileScanner = new Scanner(queryFile)) {
-                while (fileScanner.hasNextLine()) {
-                    String line = fileScanner.nextLine().trim();
-                    if (line.isBlank()) {
-                        continue;
-                    }
-
-                    long requestStart = System.currentTimeMillis();
-                    QueryRequest request = QueryRequest.parse(line);
-                    int zone = request.zone();
-                    ServerInterface server = connectToServer(zone);
-
-                    long executionStart = System.currentTimeMillis();
-                    Object result = invokeServer(server, request);
-                    long executionTime = System.currentTimeMillis() - executionStart;
-                    long turnaroundTime = System.currentTimeMillis() - requestStart;
-                    long waitingTime = turnaroundTime - executionTime;
-
-                    String summary = result + " " + request.originalQuery() + " (turnaround time: "
-                            + turnaroundTime + " ms, execution time: " + executionTime + " ms, waiting time: "
-                            + waitingTime + " ms, processed by Server " + zone + ")";
-                    outputLines.add(summary);
-                    System.out.println(summary);
-
-                    recordMethodStats(methodStats, request.methodName(), turnaroundTime, executionTime, waitingTime);
-
-                    try {
-                        Thread.sleep(T);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                }
+            for (QueryResult result : results) {
+                String line = result.format();
+                outputLines.add(line);
+                System.out.println(line);
             }
-
-            for (String methodName : List.of("getPopulationofCountry", "getNumberofCities", "getNumberofCountries", "getNumberofCountriesMM")) {
-                outputLines.add(buildAverageSummary(methodName, methodStats.get(methodName)));
+            for (String methodName : QUERY_METHODS) {
+                outputLines.add(buildAverageSummary(methodName, results));
             }
 
             writeOutputFile(outputLines);
@@ -89,7 +53,90 @@ public class Client {
         }
     }
 
-    private static Object invokeServer(ServerInterface server, QueryRequest request) throws Exception {
+    private static File resolveQueryFile(Scanner stdinScanner) {
+        String filePath = System.getenv("QUERY_FILE");
+        if (filePath == null || filePath.isBlank()) {
+            System.out.println("Input file path to queryset: ");
+            filePath = stdinScanner.nextLine();
+        }
+
+        File queryFile = new File(filePath);
+        if (!queryFile.exists()) {
+            throw new IllegalArgumentException("Input file does not exist: " + filePath);
+        }
+        return queryFile;
+    }
+
+    private static List<QueryRequest> readQueries(File queryFile) throws IOException {
+        List<QueryRequest> requests = new ArrayList<>();
+        try (Scanner fileScanner = new Scanner(queryFile)) {
+            while (fileScanner.hasNextLine()) {
+                String line = fileScanner.nextLine().trim();
+                if (!line.isBlank()) {
+                    requests.add(QueryRequest.parse(line));
+                }
+            }
+        }
+        return requests;
+    }
+
+    private static List<QueryResult> executeQueries(List<QueryRequest> requests)
+            throws InterruptedException, ExecutionException {
+        if (requests.isEmpty()) {
+            return List.of();
+        }
+
+        int poolSize = Math.min(requests.size(), Math.max(4, Runtime.getRuntime().availableProcessors() * 2));
+        int delayMs = configuredDelayMs();
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(poolSize);
+        List<Future<QueryResult>> futures = new ArrayList<>();
+        long firstStart = System.nanoTime();
+
+        try {
+            for (int index = 0; index < requests.size(); index++) {
+                QueryRequest request = requests.get(index);
+                long scheduledStart = firstStart + TimeUnit.MILLISECONDS.toNanos((long) index * delayMs);
+                long delay = Math.max(0, scheduledStart - System.nanoTime());
+                futures.add(executor.schedule(
+                    () -> executeQuery(request, scheduledStart),
+                        delay,
+                        TimeUnit.NANOSECONDS));
+            }
+
+            List<QueryResult> results = new ArrayList<>();
+            for (Future<QueryResult> future : futures) {
+                results.add(future.get());
+            }
+            return results;
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+        private static QueryResult executeQuery(QueryRequest request, long scheduledStart)
+            throws RemoteException, NotBoundException {
+        RemoteServer remoteServer = connectToServer(request.zone());
+        long executionStart = System.nanoTime();
+        Object result = invokeServer(remoteServer.server(), request);
+        long finished = System.nanoTime();
+
+        long turnaroundMs = nanosToMillis(finished - scheduledStart);
+        long executionMs = nanosToMillis(finished - executionStart);
+        long waitingMs = Math.max(0, turnaroundMs - executionMs);
+        return new QueryResult(request, result, remoteServer.address(),
+                turnaroundMs, executionMs, waitingMs);
+    }
+
+    private static int configuredDelayMs() {
+        String value = System.getenv("CLIENT_DELAY_MS");
+        return value == null || value.isBlank() ? DEFAULT_DELAY_MS : Integer.parseInt(value);
+    }
+
+    private static long nanosToMillis(long nanos) {
+        return TimeUnit.NANOSECONDS.toMillis(nanos);
+    }
+
+    private static Object invokeServer(ServerInterface server, QueryRequest request) throws RemoteException {
         return switch (request.methodName()) {
             case "getPopulationofCountry" -> server.getPopulationofCountry((String) request.arguments()[0]);
             case "getNumberofCities" -> server.getNumberofCities((String) request.arguments()[0],
@@ -102,63 +149,53 @@ public class Client {
         };
     }
 
-    private static void recordMethodStats(Map<String, List<Long>> methodStats, String methodName, long turnaroundTime, long executionTime, long waitingTime) {
-        List<Long> stats = methodStats.get(methodName);
-        if (stats == null) {
-            stats = new ArrayList<>();
-            methodStats.put(methodName, stats);
-        }
-        stats.add(turnaroundTime);
-        stats.add(executionTime);
-        stats.add(waitingTime);
-    }
-
-    private static String buildAverageSummary(String methodName, List<Long> stats) {
-        if (stats == null || stats.isEmpty()) {
-            return methodName + " avg turn-around time: 0 ms, avg execution time: 0 ms, avg waiting time: 0 ms, min turn-around time: 0 ms, max turn-around time: 0 ms";
-        }
-
-        int entries = stats.size() / 3;
+    private static String buildAverageSummary(String methodName, List<QueryResult> results) {
+        long count = 0;
         long turnaroundTotal = 0;
         long executionTotal = 0;
         long waitingTotal = 0;
         long minTurnaround = Long.MAX_VALUE;
         long maxTurnaround = Long.MIN_VALUE;
 
-        for (int i = 0; i < stats.size(); i += 3) {
-            long turnaround = stats.get(i);
-            long execution = stats.get(i + 1);
-            long waiting = stats.get(i + 2);
-            turnaroundTotal += turnaround;
-            executionTotal += execution;
-            waitingTotal += waiting;
-            minTurnaround = Math.min(minTurnaround, turnaround);
-            maxTurnaround = Math.max(maxTurnaround, turnaround);
+        for (QueryResult result : results) {
+            if (!result.request().methodName().equals(methodName)) {
+                continue;
+            }
+            count++;
+            turnaroundTotal += result.turnaroundMs();
+            executionTotal += result.executionMs();
+            waitingTotal += result.waitingMs();
+            minTurnaround = Math.min(minTurnaround, result.turnaroundMs());
+            maxTurnaround = Math.max(maxTurnaround, result.turnaroundMs());
         }
 
-        return methodName + " avg turn-around time: " + (turnaroundTotal / entries)
-                + " ms, avg execution time: " + (executionTotal / entries)
-                + " ms, avg waiting time: " + (waitingTotal / entries)
+        if (count == 0) {
+            return methodName + " avg turn-around time: 0 ms, avg execution time: 0 ms, avg waiting time: 0 ms, min turn-around time: 0 ms, max turn-around time: 0 ms";
+        }
+        return methodName + " avg turn-around time: " + turnaroundTotal / count
+                + " ms, avg execution time: " + executionTotal / count
+                + " ms, avg waiting time: " + waitingTotal / count
                 + " ms, min turn-around time: " + minTurnaround
                 + " ms, max turn-around time: " + maxTurnaround + " ms";
     }
 
     private static void writeOutputFile(List<String> outputLines) throws IOException {
-        try (PrintWriter writer = new PrintWriter(OUTPUT_FILE)) {
+        String outputFile = System.getenv().getOrDefault("OUTPUT_FILE", DEFAULT_OUTPUT_FILE);
+        try (PrintWriter writer = new PrintWriter(outputFile)) {
             for (String line : outputLines) {
                 writer.println(line);
             }
         }
     }
 
-    private static ServerInterface connectToServer(int zone) throws RemoteException, NotBoundException {
+    private static RemoteServer connectToServer(int zone) throws RemoteException, NotBoundException {
         ServerAdress proxyAdress = new ServerAdress("proxy", 1099, "proxy");
         ProxyInterface proxy = (ProxyInterface) getStub(proxyAdress);
         ServerAdress serverAdress = proxy.RequestServer(zone);
         if (serverAdress == null) {
             throw new IllegalStateException("No server available for zone " + zone);
         }
-        return (ServerInterface) getStub(serverAdress);
+        return new RemoteServer((ServerInterface) getStub(serverAdress), serverAdress);
     }
 
     private static Remote getStub(ServerAdress serveradress) throws RemoteException, NotBoundException {
@@ -215,4 +252,23 @@ public class Client {
             };
         }
     }
+
+    private record RemoteServer(ServerInterface server, ServerAdress address) {
+    }
+
+    private record QueryResult(QueryRequest request, Object result, ServerAdress serverAddress,
+            long turnaroundMs, long executionMs, long waitingMs) {
+        private String format() {
+            return result + " " + request.originalQuery() + " (turnaround time: " + turnaroundMs
+                    + " ms, execution time: " + executionMs + " ms, waiting time: " + waitingMs
+                    + " ms, processed by Server " + serverNumber(serverAddress) + ")";
+        }
+
+        private static String serverNumber(ServerAdress address) {
+            String name = address.getServerName();
+            int separator = name.lastIndexOf("server-zone");
+            return separator >= 0 ? name.substring(separator + "server-zone".length()) : name;
+        }
+    }
+
 }
