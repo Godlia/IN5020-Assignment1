@@ -3,13 +3,16 @@ package com.group2.client;
 import java.io.File;
 import java.lang.reflect.Method;
 import java.rmi.NotBoundException;
+import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Arrays;
 import java.util.Scanner;
 
+import com.group2.proxy.ProxyInterface;
 import com.group2.server.ServerInterface;
+import com.group2.utils.serverAdress.ServerAdress;
 
 public class Client {
     public static void main(String[] args) {
@@ -17,11 +20,9 @@ public class Client {
         System.out.println("Input file path to queryset: ");
         String filePath = stdinScanner.nextLine();
         File queryFile = new File(filePath);
-        Registry registry = null;
         ServerInterface server = null;
         try {
-            registry = LocateRegistry.getRegistry();
-            server = (ServerInterface) registry.lookup("server");
+            server = connectToServer();
         } catch (RemoteException | NotBoundException e) {
             e.printStackTrace();
         }
@@ -72,6 +73,23 @@ public class Client {
             }
         }
         return callArgs;
+    }
+
+    private static ServerInterface connectToServer() throws RemoteException, NotBoundException {
+        ServerAdress proxyAdress = new ServerAdress("proxy", 1099, "proxy");
+        ProxyInterface proxy = (ProxyInterface) getStub(proxyAdress);
+        ServerAdress serverAdress = proxy.RequestServer(1);
+        return (ServerInterface) getStub(serverAdress);
+    }
+
+    private static Remote getStub(ServerAdress serveradress) throws RemoteException, NotBoundException {
+        try {
+            Registry registry = LocateRegistry.getRegistry(serveradress.getIpAddress(), serveradress.getPort());
+            return registry.lookup(serveradress.getServerName());
+        } catch (RemoteException | NotBoundException e) {
+            System.out.println("Failed to connect to server: " + serveradress.getServerName() + " at " + serveradress.getIpAddress() + ":" + serveradress.getPort());
+            return null;
+        }
     }
 
 }
