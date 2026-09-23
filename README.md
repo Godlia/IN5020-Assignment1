@@ -1,7 +1,5 @@
 # IN5020 Group 2
 
-Akkurat nå så er dette basically bare en clone av eksempel prosjektet vi har fått fra TA
-
 ## Arbeidsfordeling
 
 * Eirik

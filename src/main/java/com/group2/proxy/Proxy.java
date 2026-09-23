@@ -39,7 +39,7 @@ public class Proxy implements ProxyInterface{
     private final ExecutorService queueRefreshExecutor = Executors.newCachedThreadPool();
     
     @Override
-    public synchronized void RegisterServer(ServerAdress serverAdress){
+    public synchronized int RegisterServer(ServerAdress serverAdress){
         serverList = java.util.Arrays.copyOf(serverList, serverList.length + 1);
         ServerInfo server = new ServerInfo(serverAdress, serverList.length);
         serverList[serverList.length - 1] = server;
@@ -50,6 +50,7 @@ public class Proxy implements ProxyInterface{
             ServerAdress severAdress = registeredServer.getServerAdress();
             System.out.println("Server Name: " + severAdress.getServerName() + ", Zone: " + registeredServer.getZone() + ", IP Address: " + severAdress.getIpAddress() + ", Port: " + severAdress.getPort());
         }
+        return server.getZone();
     };
 
     @Override
@@ -68,7 +69,8 @@ public class Proxy implements ProxyInterface{
             }
         }
 
-        return server.getServerAdress();
+        ServerAdress address = server.getServerAdress();
+        return new ServerAdress(address.getIpAddress(), address.getPort(), address.getServerName(), server.getZone());
     };
 
     private ServerInfo PriorityAlgorithm(int zone){

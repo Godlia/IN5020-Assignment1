@@ -9,7 +9,6 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.ExecutionException;
@@ -17,6 +16,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.group2.proxy.ProxyInterface;
 import com.group2.server.ServerInterface;
@@ -33,6 +33,7 @@ public class Client {
 
     public static void main(String[] args) {
         try (Scanner stdinScanner = new Scanner(System.in)) {
+            long totalStart = System.nanoTime();
             File queryFile = resolveQueryFile(stdinScanner);
             List<QueryRequest> requests = readQueries(queryFile);
             List<QueryResult> results = executeQueries(requests);
@@ -46,6 +47,11 @@ public class Client {
             for (String methodName : QUERY_METHODS) {
                 outputLines.add(buildAverageSummary(methodName, results));
             }
+
+            long totalElapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - totalStart);
+            String totalLine = "Total elapsed time: " + totalElapsed + " ms";
+            outputLines.add(totalLine);
+            System.out.println(totalLine);
 
             writeOutputFile(outputLines);
         } catch (Exception e) {
@@ -90,6 +96,7 @@ public class Client {
         int delayMs = configuredDelayMs();
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(poolSize);
         List<Future<QueryResult>> futures = new ArrayList<>();
+        AtomicInteger completed = new AtomicInteger();
         long firstStart = System.nanoTime();
 
         try {
@@ -98,7 +105,7 @@ public class Client {
                 long scheduledStart = firstStart + TimeUnit.MILLISECONDS.toNanos((long) index * delayMs);
                 long delay = Math.max(0, scheduledStart - System.nanoTime());
                 futures.add(executor.schedule(
-                    () -> executeQuery(request, scheduledStart),
+                    () -> executeQuery(request, scheduledStart, completed, requests.size()),
                         delay,
                         TimeUnit.NANOSECONDS));
             }
@@ -113,7 +120,8 @@ public class Client {
         }
     }
 
-        private static QueryResult executeQuery(QueryRequest request, long scheduledStart)
+            private static QueryResult executeQuery(QueryRequest request, long scheduledStart,
+                AtomicInteger completed, int totalQueries)
             throws RemoteException, NotBoundException {
         RemoteServer remoteServer = connectToServer(request.zone());
         long executionStart = System.nanoTime();
@@ -123,6 +131,19 @@ public class Client {
         long turnaroundMs = nanosToMillis(finished - scheduledStart);
         long executionMs = nanosToMillis(finished - executionStart);
         long waitingMs = Math.max(0, turnaroundMs - executionMs);
+
+
+        //Output status
+        int completedQueries = completed.incrementAndGet();
+        if (completedQueries % 10 == 0 || completedQueries == totalQueries) {
+            System.out.print("\rProgress: completed " + completedQueries + "/" + totalQueries + " queries.");
+            System.out.flush();
+            if (completedQueries == totalQueries) {
+                System.out.println();
+            }
+        }
+
+        
         return new QueryResult(request, result, remoteServer.address(),
                 turnaroundMs, executionMs, waitingMs);
     }
@@ -205,69 +226,6 @@ public class Client {
         } catch (RemoteException | NotBoundException e) {
             System.out.println("Failed to connect to server: " + serveradress.getServerName() + " at " + serveradress.getIpAddress() + ":" + serveradress.getPort());
             throw e;
-        }
-    }
-
-    private record QueryRequest(String originalQuery, String methodName, Object[] arguments, int zone) {
-        private static QueryRequest parse(String line) {
-            String[] tokens = line.split("\\s+");
-            int zoneIndex = -1;
-            for (int i = 0; i < tokens.length; i++) {
-                if (tokens[i].startsWith("Zone:")) {
-                    zoneIndex = i;
-                    break;
-                }
-            }
-
-            if (zoneIndex < 0) {
-                throw new IllegalArgumentException("Missing Zone value in query: " + line);
-            }
-
-            String methodName = tokens[0];
-            String[] argumentTokens = Arrays.copyOfRange(tokens, 1, zoneIndex);
-            Object[] arguments = buildArguments(methodName, argumentTokens);
-            int zone = Integer.parseInt(tokens[zoneIndex].substring("Zone:".length()));
-            return new QueryRequest(line, methodName, arguments, zone);
-        }
-
-        private static Object[] buildArguments(String methodName, String[] tokens) {
-            return switch (methodName) {
-                case "getPopulationofCountry" -> new Object[] { String.join(" ", tokens) };
-                case "getNumberofCities" -> new Object[] {
-                        String.join(" ", Arrays.copyOfRange(tokens, 0, tokens.length - 2)),
-                        Integer.parseInt(tokens[tokens.length - 2]),
-                        tokens[tokens.length - 1]
-                };
-                case "getNumberofCountries" -> new Object[] {
-                        Integer.parseInt(tokens[0]),
-                        Integer.parseInt(tokens[1]),
-                        tokens[2]
-                };
-                case "getNumberofCountriesMM" -> new Object[] {
-                        Integer.parseInt(tokens[0]),
-                        Integer.parseInt(tokens[1]),
-                        Integer.parseInt(tokens[2])
-                };
-                default -> throw new IllegalArgumentException("Unknown method: " + methodName);
-            };
-        }
-    }
-
-    private record RemoteServer(ServerInterface server, ServerAdress address) {
-    }
-
-    private record QueryResult(QueryRequest request, Object result, ServerAdress serverAddress,
-            long turnaroundMs, long executionMs, long waitingMs) {
-        private String format() {
-            return result + " " + request.originalQuery() + " (turnaround time: " + turnaroundMs
-                    + " ms, execution time: " + executionMs + " ms, waiting time: " + waitingMs
-                    + " ms, processed by Server " + serverNumber(serverAddress) + ")";
-        }
-
-        private static String serverNumber(ServerAdress address) {
-            String name = address.getServerName();
-            int separator = name.lastIndexOf("server-zone");
-            return separator >= 0 ? name.substring(separator + "server-zone".length()) : name;
         }
     }
 

@@ -29,16 +29,16 @@ public class Server implements ServerInterface {
 
     public static void main(String[] args) {
         try {
-            int zone = args.length > 0 ? Integer.parseInt(args[0]) : 1;
             String serverHost = System.getenv().getOrDefault("SERVER_HOST", "localhost");
-            String boundName = "server-zone" + zone;
+            String boundName = "server";
 
             Registry registry = LocateRegistry.createRegistry(1099);
             Server server = new Server();
             ServerInterface serverStub = (ServerInterface) UnicastRemoteObject.exportObject(server, 0);
             registry.bind(boundName, serverStub);
-            registerWithProxy(serverHost, 1099, boundName);
-        } catch (RemoteException | AlreadyBoundException | SQLException e) {
+            int zone = registerWithProxy(serverHost, 1099, boundName);
+            System.out.println("Assigned zone " + zone + " to " + serverHost + ".");
+        } catch (RemoteException | AlreadyBoundException | NotBoundException | SQLException e) {
             e.printStackTrace();
         }
     }
@@ -85,22 +85,20 @@ public class Server implements ServerInterface {
 
     @Override
     public int getQueueLength() {
-        return 0; // NOTE: Needs to be implemented
+        return 20; // NOTE: Needs to be implemented
     }
 
-    private static void registerWithProxy(String serverHost, int serverPort, String serverName) {
+    private static int registerWithProxy(String serverHost, int serverPort, String serverName)
+            throws RemoteException, NotBoundException {
         String proxyHost = "proxy";
         int proxyPort = 1099;
         String proxyName = "proxy";
-        try {
-            Registry registry = LocateRegistry.getRegistry(proxyHost, proxyPort);
-            ProxyInterface proxyStub = (ProxyInterface) registry.lookup(proxyName);
-            ServerAdress serverAdress = new ServerAdress(serverHost, serverPort, serverName);
-            proxyStub.RegisterServer(serverAdress);
-            System.out.println("Registered server on " + serverHost + ":" + serverPort + " with proxy.");
-        } catch (RemoteException | NotBoundException e) {
-            e.printStackTrace();
-        }
+        Registry registry = LocateRegistry.getRegistry(proxyHost, proxyPort);
+        ProxyInterface proxyStub = (ProxyInterface) registry.lookup(proxyName);
+        ServerAdress serverAdress = new ServerAdress(serverHost, serverPort, serverName);
+        int zone = proxyStub.RegisterServer(serverAdress);
+        System.out.println("Registered server on " + serverHost + ":" + serverPort + " with proxy.");
+        return zone;
     }
 
 }

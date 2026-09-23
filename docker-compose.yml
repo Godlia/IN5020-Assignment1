@@ -15,52 +15,52 @@ services:
       start_period: 2s
     
 
-  server1:
+  serverA:
     build: .
+    image: in5020-servera
     environment:
       APP_ROLE: server
-      SERVER_ZONE: 1
-      SERVER_HOST: server1
+      SERVER_HOST: serverA
     depends_on:
       proxy:
         condition: service_healthy
 
-  server2:
+  serverB:
     build: .
+    image: in5020-serverb
     environment:
       APP_ROLE: server
-      SERVER_ZONE: 2
-      SERVER_HOST: server2
+      SERVER_HOST: serverB
     depends_on:
       proxy:
         condition: service_healthy
 
-  server3:
+  serverC:
     build: .
+    image: in5020-serverc
     environment:
       APP_ROLE: server
-      SERVER_ZONE: 3
-      SERVER_HOST: server3
+      SERVER_HOST: serverC
     depends_on:
       proxy:
         condition: service_healthy
 
-  server4:
+  serverD:
     build: .
+    image: in5020-serverd
     environment:
       APP_ROLE: server
-      SERVER_ZONE: 4
-      SERVER_HOST: server4
+      SERVER_HOST: serverD
     depends_on:
       proxy:
         condition: service_healthy
 
-  server5:
+  serverE:
     build: .
+    image: in5020-servere
     environment:
       APP_ROLE: server
-      SERVER_ZONE: 5
-      SERVER_HOST: server5
+      SERVER_HOST: serverE
     depends_on:
       proxy:
         condition: service_healthy
@@ -71,18 +71,20 @@ services:
     environment:
       APP_ROLE: client
       QUERY_FILE: /in5020/exercise_1_input.txt
+      OUTPUT_FILE: /in5020/output/client-output.txt
     volumes:
       - ./exercise_1_input.txt:/in5020/exercise_1_input.txt:ro
+      - ./output:/in5020/output
     depends_on:
       proxy:
         condition: service_healthy
-      server1:
+      serverA:
         condition: service_started
-      server2:
+      serverB:
         condition: service_started
-      server3:
+      serverC:
         condition: service_started
-      server4:
+      serverD:
         condition: service_started
-      server5:
+      serverE:
         condition: service_started
