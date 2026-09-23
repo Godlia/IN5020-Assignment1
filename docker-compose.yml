@@ -14,6 +14,8 @@ services:
       APP_ROLE: server
       SERVER_ZONE: 1
       SERVER_HOST: server1
+    depends_on:
+      - proxy
 
   server2:
     build: .
@@ -21,6 +23,8 @@ services:
       APP_ROLE: server
       SERVER_ZONE: 2
       SERVER_HOST: server2
+    depends_on:
+      - proxy
 
   server3:
     build: .
@@ -28,6 +32,8 @@ services:
       APP_ROLE: server
       SERVER_ZONE: 3
       SERVER_HOST: server3
+    depends_on:
+      - proxy
 
   server4:
     build: .
@@ -35,6 +41,8 @@ services:
       APP_ROLE: server
       SERVER_ZONE: 4
       SERVER_HOST: server4
+    depends_on:
+      - proxy
 
   server5:
     build: .
@@ -42,6 +50,8 @@ services:
       APP_ROLE: server
       SERVER_ZONE: 5
       SERVER_HOST: server5
+    depends_on:
+      - proxy
 
 
   client:
