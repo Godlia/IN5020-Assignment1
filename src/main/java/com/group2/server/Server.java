@@ -71,13 +71,24 @@ public class Server implements ServerInterface {
     @Override
     public long getPopulationofCountry(String countryName, int requestedZone) {
         try {
-            return requestQueue.submit(requestedZone,
-                    // this is being handed to request.Queue.submit, so it is in the queue
-                    // it asks the worker to check the cache
-                    () -> cached(
-                            CacheKey.of("getPopulationofCountry", countryName),
-                            // if cache miss, then run this repository method
-                            () -> repository.getPopulationOfCountry(countryName)));
+            Long result;
+            // Check in cache first
+            CacheKey cacheKey = CacheKey.of("getPopulationofCountry", countryName);
+            result = tryToGetFromCash(cacheKey);
+            if (result != null) {
+                return result;
+            }
+
+            // Fall through
+            // Use requestQueue
+            result = requestQueue.submit(
+                requestedZone,
+                () -> repository.getPopulationOfCountry(countryName)
+            );
+            // Post to cache
+            cache.put(cacheKey, result);
+
+            return result;
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -87,13 +98,24 @@ public class Server implements ServerInterface {
     @Override
     public int getNumberofCities(String countryName, int threshold, String comp, int requestedZone) {
         try {
-            return requestQueue.submit(requestedZone,
-                    // this is being handed to request.Queue.submit, so it is in the queue
-                    // it asks the worker to check the cache
-                    () -> cached(
-                            CacheKey.of("getNumberofCities", countryName, threshold, comp),
-                            // if cache miss, then run this repository method
-                            () -> repository.getNumberOfCitiesFiltered(countryName, threshold, comp)));
+            Integer result;
+            // Check in cache first
+            CacheKey cacheKey = CacheKey.of("getNumberofCities", countryName, threshold, comp);
+            result = tryToGetFromCash(cacheKey);
+            if (result != null) {
+                return result;
+            }
+
+            // Fall through
+            // Use requestQueue
+            result = requestQueue.submit(
+                requestedZone,
+                () -> repository.getNumberOfCitiesFiltered(countryName, threshold, comp)
+            );
+            // Post to cache
+            cache.put(cacheKey, result);
+
+            return result;
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -103,35 +125,66 @@ public class Server implements ServerInterface {
     @Override
     public int getNumberofCountries(int citycount, int threshold, String comp, int requestedZone) {
         try {
-            return requestQueue.submit(requestedZone, () -> {
-                try {
-                    return cached(
-                            CacheKey.of("getNumberofCountries", citycount, threshold, comp),
-                            () -> repository.getNumberofCountries(citycount, threshold, comp));
-                } catch (SQLException | IllegalArgumentException exception) {
-                    throw new IllegalStateException("Could not count countries", exception);
-                }
-            });
-        } catch (Exception exception) {
-            throw new IllegalStateException("Could not count countries", exception);
+            Integer result;
+            // Check in cache first
+            CacheKey cacheKey = CacheKey.of("getNumberofCountries", citycount, threshold, comp);
+            result = tryToGetFromCash(cacheKey);
+            if (result != null) {
+                return result;
+            }
+
+            // Fall through
+            // Use requestQueue
+            try {
+                result = requestQueue.submit(
+                    requestedZone,
+                    () -> {
+                            return repository.getNumberofCountries(citycount, threshold, comp);
+                        }
+                    );
+            } catch (SQLException | IllegalArgumentException e) {
+                throw new IllegalStateException("Could not count countries", e);
+            }
+            // Post to cache
+            cache.put(cacheKey, result);
+
+            return result;
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not count countries", e);
         }
     }
 
     @Override
     public int getNumberofCountriesMM(int citycount, int minpopulation, int maxpopulation, int requestedZone) {
         try {
-            return requestQueue.submit(requestedZone, () -> {
-                try {
-                    return cached(
-                            CacheKey.of("getNumberofCountriesMM", citycount, minpopulation, maxpopulation),
-                            () -> repository.getNumberofCountriesMM(citycount, minpopulation, maxpopulation));
-                } catch (SQLException exception) {
-                    throw new IllegalStateException("Could not count countries", exception);
-                }
-            });
-        } catch (Exception exception) {
-            throw new IllegalStateException("Could not count countries", exception);
+            Integer result;
+            // Check in cache first
+            CacheKey cacheKey = CacheKey.of("getNumberofCountriesMM", citycount, minpopulation, maxpopulation);
+            result = tryToGetFromCash(cacheKey);
+            if (result != null) {
+                return result;
+            }
+
+            // Fall through
+            // Use requestQueue
+            try {
+                result = requestQueue.submit(
+                    requestedZone,
+                    () -> {
+                            return repository.getNumberofCountriesMM(citycount, minpopulation, maxpopulation);
+                        }
+                    );
+            } catch (SQLException | IllegalArgumentException e) {
+                throw new IllegalStateException("Could not count countries", e);
+            }
+            // Post to cache
+            cache.put(cacheKey, result);
+
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+        return -1;
     }
 
     @Override
@@ -152,10 +205,10 @@ public class Server implements ServerInterface {
         return zone;
     }
 
-    private <T> T cached(CacheKey key, Callable<T> databaseQuery) throws Exception {
+    private <T> T tryToGetFromCash(CacheKey key) throws Exception {
         // Option 1: if caching is turned off
         if (!cacheEnabled) {
-            return databaseQuery.call();
+            return null;
         }
 
         // Option 2: caching is on, and the answer is in the cache
@@ -167,10 +220,7 @@ public class Server implements ServerInterface {
             return result;
         }
 
-        // Option 3: caching is on, but cache miss
-        T result = databaseQuery.call();
-        cache.put(key, result);
-        return result;
+        return null;
     }
 
 }
