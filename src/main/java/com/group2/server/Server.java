@@ -48,6 +48,8 @@ public class Server implements ServerInterface {
 
     @Override
     public long getPopulationofCountry(String countryName, int requestedZone) {
+        // KINE: Hvis cashen skal implementeres slik at den hopper over køen, så må den skje her, før og istedenfor submiten
+        // KINE: Hvis cashen look-upen skal inn i køen, må den submittes, og requestQueue må endres til å håndtere que look-ups.
         try {
             return requestQueue.submit(requestedZone, () -> repository.getPopulationOfCountry(countryName));
         } catch (Exception e) {
@@ -59,6 +61,8 @@ public class Server implements ServerInterface {
     @Override
     public int getNumberofCities(String countryName, int threshold, String comp, int requestedZone) {
         try {
+            // KINE: Hvis cashen skal implementeres slik at den hopper over køen, så må den skje her, før og istedenfor submiten
+            // KINE: Hvis cashen look-upen skal inn i køen, må den submittes, og requestQueue må endres til å håndtere que look-ups.
             return requestQueue.submit(requestedZone,
                     () -> repository.getNumberOfCitiesFiltered(countryName, threshold, comp));
         } catch (Exception e) {
@@ -69,6 +73,8 @@ public class Server implements ServerInterface {
 
     @Override
     public int getNumberofCountries(int citycount, int threshold, String comp, int requestedZone) {
+        // KINE: Hvis cashen skal implementeres slik at den hopper over køen, så må den skje her, før og istedenfor submiten
+        // KINE: Hvis cashen look-upen skal inn i køen, må den submittes, og requestQueue må endres til å håndtere que look-ups.
         try {
             return requestQueue.submit(requestedZone, () -> {
                 try {
@@ -84,6 +90,8 @@ public class Server implements ServerInterface {
 
     @Override
     public int getNumberofCountriesMM(int citycount, int minpopulation, int maxpopulation, int requestedZone) {
+        // KINE: Hvis cashen skal implementeres slik at den hopper over køen, så må den skje her, før og istedenfor submiten
+        // KINE: Hvis cashen look-upen skal inn i køen, må den submittes, og requestQueue må endres til å håndtere que look-ups.
         try {
             return requestQueue.submit(requestedZone, () -> {
                 try {
