@@ -3,25 +3,40 @@
 ## How to run
 
 ### Requirements
-#### System requirements for running computer
-DockerDesktop
 
-#### Main tool requirements (included in project)
-* Java 21 (JDK)
-* Maven (A wrapper has been included for convenience)
+* Java Development Kit V.21
+* Docker Engine
+* Docker Compose V2
 
-## Installing and running
+### Installing and running
+
+#### Automatic runscript
 
 If on Windows, run:
+
 ```bash
-rundatshit.ps1
-```
-If on Linux or Mac, run:
-```bash
-rundatshit.sh
+./runwin.ps1
 ```
 
+If on Linux, run:
 
+```bash
+./run.sh
+```
+
+If on Mac, run (untested due to no macs in group):
+
+```bash
+./runmac.sh
+```
+
+#### Manual Installation
+
+```bash
+
+```
+
+## Run time
 
 ## Workload distribution
 
