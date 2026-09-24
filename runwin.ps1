@@ -3,9 +3,19 @@ $ErrorActionPreference = 'Stop'
 $ScriptDir = $PSScriptRoot
 Set-Location $ScriptDir
 
-$cacheTypes = @('FIFO', 'LRU', 'NAIVE')
+$backup = $args.Count -eq 1 -and $args[0] -eq '--backup'
+if ($args.Count -gt 1 -or ($args.Count -eq 1 -and -not $backup)) {
+	Write-Error "Usage: .\runwin.ps1 [--backup]"
+	exit 2
+}
+
+if ($backup) {
+	$cacheTypes = @('naive-server', 'cache-server', 'client-cache')
+} else {
+	$cacheTypes = @('FIFO', 'LRU', 'NAIVE')
+}
 $clientDelaysMs = @(50, 20)
-$maxParallel = 1
+$maxParallel = 3
 $projects = New-Object System.Collections.Generic.List[string]
 $batchJobs = New-Object System.Collections.Generic.List[object]
 $exitStatus = 0
@@ -33,7 +43,7 @@ function Wait-Batch {
 }
 
 $runScenario = {
-	param($ScriptDir, $CacheType, $ClientDelayMs, $RunName, $Project, $ProxyPort)
+	param($ScriptDir, $CacheType, $ClientDelayMs, $RunName, $Project, $ProxyPort, $Backup)
 
 	$ErrorActionPreference = 'Stop'
 	Set-Location $ScriptDir
@@ -47,20 +57,45 @@ $runScenario = {
 		}
 	}
 
-	if ($CacheType -eq 'NAIVE') {
+	if ($Backup) {
+		$outputFilename = "$CacheType.txt"
+		switch ($CacheType) {
+			'naive-server' {
+				$serverCacheType = 'NAIVE'
+				$clientCacheMode = 'NAIVE'
+			}
+			'cache-server' {
+				$serverCacheType = 'FIFO'
+				$clientCacheMode = 'NAIVE'
+			}
+			'client-cache' {
+				$serverCacheType = 'NAIVE'
+				$clientCacheMode = 'FIFO'
+			}
+		}
+	} else {
+		$outputFilename = 'client-output.txt'
+		$serverCacheType = $CacheType
+		$clientCacheMode = $CacheType
+	}
+
+	if ($serverCacheType -eq 'NAIVE') {
 		$serverCacheMode = 'NAIVE'
 		$cachePolicy = 'LRU'
 	} else {
 		$serverCacheMode = 'SERVER'
-		$cachePolicy = $CacheType
+		$cachePolicy = $serverCacheType
 	}
 
 	New-Item -ItemType Directory -Force "output/$RunName" | Out-Null
 	Write-Output "Running cache=$CacheType delay=${ClientDelayMs}ms (project=$Project)"
 
 	$env:CACHE_TYPE = $CacheType
+	$env:SERVER_CACHE_TYPE = $serverCacheType
+	$env:CLIENT_CACHE_MODE = $clientCacheMode
 	$env:CLIENT_DELAY_MS = "$ClientDelayMs"
 	$env:RUN_NAME = $RunName
+	$env:OUTPUT_FILENAME = $outputFilename
 	$env:SERVER_CACHE_MODE = $serverCacheMode
 	$env:CACHE_POLICY = $cachePolicy
 	$env:PROXY_PORT = "$ProxyPort"
@@ -86,7 +121,7 @@ try {
 			$proxyPort = 1100 + $projects.Count
 			$projects.Add($project)
 
-			$job = Start-Job -ScriptBlock $runScenario -ArgumentList $ScriptDir, $cacheType, $clientDelayMs, $runName, $project, $proxyPort
+			$job = Start-Job -ScriptBlock $runScenario -ArgumentList $ScriptDir, $cacheType, $clientDelayMs, $runName, $project, $proxyPort, $backup
 			$batchJobs.Add($job)
 
 			if ($batchJobs.Count -eq $maxParallel) {

@@ -8,7 +8,6 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.sql.SQLException;
-import java.util.concurrent.Callable;
 
 import com.group2.cache.Cache;
 import com.group2.cache.CacheKey;
@@ -31,7 +30,10 @@ public class Server implements ServerInterface {
             EvictionPolicy.valueOf(cacheEnabled ? CACHE_TYPE : "LRU"));
 
     private static String resolveCacheType() {
-        String cacheType = System.getenv("CACHE_TYPE");
+        String cacheType = System.getenv("SERVER_CACHE_TYPE");
+        if (cacheType == null || cacheType.isBlank()) {
+            cacheType = System.getenv("CACHE_TYPE");
+        }
         if (cacheType == null || cacheType.isBlank()) {
             String cacheMode = System.getenv().getOrDefault("CACHE_MODE", "NAIVE");
             cacheType = "SERVER".equalsIgnoreCase(cacheMode)

@@ -22,7 +22,7 @@ services:
     environment:
       APP_ROLE: server
       SERVER_HOST: serverA
-      CACHE_TYPE: "${CACHE_TYPE:-NAIVE}"
+      CACHE_TYPE: "${SERVER_CACHE_TYPE:-NAIVE}"
       QUEUE_LOG_FILE: /in5020/output/${RUN_NAME}/serverA-queue.log
       CACHE_MODE: "${SERVER_CACHE_MODE:-NAIVE}"
       CACHE_POLICY: "${CACHE_POLICY:-LRU}"
@@ -44,7 +44,7 @@ services:
     environment:
       APP_ROLE: server
       SERVER_HOST: serverB
-      CACHE_TYPE: "${CACHE_TYPE:-NAIVE}"
+      CACHE_TYPE: "${SERVER_CACHE_TYPE:-NAIVE}"
       QUEUE_LOG_FILE: /in5020/output/${RUN_NAME}/serverB-queue.log
       CACHE_MODE: "${SERVER_CACHE_MODE:-NAIVE}"
       CACHE_POLICY: "${CACHE_POLICY:-LRU}"
@@ -66,7 +66,7 @@ services:
     environment:
       APP_ROLE: server
       SERVER_HOST: serverC
-      CACHE_TYPE: "${CACHE_TYPE:-NAIVE}"
+      CACHE_TYPE: "${SERVER_CACHE_TYPE:-NAIVE}"
       QUEUE_LOG_FILE: /in5020/output/${RUN_NAME}/serverC-queue.log
       CACHE_MODE: "${SERVER_CACHE_MODE:-NAIVE}"
       CACHE_POLICY: "${CACHE_POLICY:-LRU}"
@@ -88,7 +88,7 @@ services:
     environment:
       APP_ROLE: server
       SERVER_HOST: serverD
-      CACHE_TYPE: "${CACHE_TYPE:-NAIVE}"
+      CACHE_TYPE: "${SERVER_CACHE_TYPE:-NAIVE}"
       QUEUE_LOG_FILE: /in5020/output/${RUN_NAME}/serverD-queue.log
       CACHE_MODE: "${SERVER_CACHE_MODE:-NAIVE}"
       CACHE_POLICY: "${CACHE_POLICY:-LRU}"
@@ -110,7 +110,7 @@ services:
     environment:
       APP_ROLE: server
       SERVER_HOST: serverE
-      CACHE_TYPE: "${CACHE_TYPE:-NAIVE}"
+      CACHE_TYPE: "${SERVER_CACHE_TYPE:-NAIVE}"
       QUEUE_LOG_FILE: /in5020/output/${RUN_NAME}/serverE-queue.log
       CACHE_MODE: "${SERVER_CACHE_MODE:-NAIVE}"
       CACHE_POLICY: "${CACHE_POLICY:-LRU}"
@@ -132,9 +132,9 @@ services:
     environment:
       APP_ROLE: client
       QUERY_FILE: /in5020/exercise_1_input.txt
-      OUTPUT_FILE: /in5020/output/${RUN_NAME}/client-output.txt
+      OUTPUT_FILE: /in5020/output/${RUN_NAME}/${OUTPUT_FILENAME:-client-output.txt}
       CLIENT_DELAY_MS: "${CLIENT_DELAY_MS:-20}"
-      CACHE_MODE: "${CACHE_TYPE:-NAIVE}"
+      CACHE_MODE: "${CLIENT_CACHE_MODE:-NAIVE}"
     volumes:
       - ./exercise_1_input.txt:/in5020/exercise_1_input.txt:ro
       - ./output:/in5020/output:rw
