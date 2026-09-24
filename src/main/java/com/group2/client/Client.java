@@ -19,8 +19,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.group2.proxy.ProxyInterface;
+import com.group2.proxy.ServerAdress;
 import com.group2.server.ServerInterface;
-import com.group2.utils.serverAdress.ServerAdress;
 
 public class Client {
     private static final int DEFAULT_DELAY_MS = 50;
