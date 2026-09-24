@@ -21,6 +21,9 @@ services:
     environment:
       APP_ROLE: server
       SERVER_HOST: serverA
+      QUEUE_LOG_FILE: /in5020/output/serverA-queue.log
+    volumes:
+      - ./output:/in5020/output:rw
     depends_on:
       proxy:
         condition: service_healthy
@@ -37,6 +40,9 @@ services:
     environment:
       APP_ROLE: server
       SERVER_HOST: serverB
+      QUEUE_LOG_FILE: /in5020/output/serverB-queue.log
+    volumes:
+      - ./output:/in5020/output:rw
     depends_on:
       proxy:
         condition: service_healthy
@@ -53,6 +59,9 @@ services:
     environment:
       APP_ROLE: server
       SERVER_HOST: serverC
+      QUEUE_LOG_FILE: /in5020/output/serverC-queue.log
+    volumes:
+      - ./output:/in5020/output:rw
     depends_on:
       proxy:
         condition: service_healthy
@@ -69,6 +78,9 @@ services:
     environment:
       APP_ROLE: server
       SERVER_HOST: serverD
+      QUEUE_LOG_FILE: /in5020/output/serverD-queue.log
+    volumes:
+      - ./output:/in5020/output:rw
     depends_on:
       proxy:
         condition: service_healthy
@@ -85,6 +97,9 @@ services:
     environment:
       APP_ROLE: server
       SERVER_HOST: serverE
+      QUEUE_LOG_FILE: /in5020/output/serverE-queue.log
+    volumes:
+      - ./output:/in5020/output:rw
     depends_on:
       proxy:
         condition: service_healthy

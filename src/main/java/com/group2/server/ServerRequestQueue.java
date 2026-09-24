@@ -29,6 +29,7 @@ final class ServerRequestQueue {
     }
 
     <T> T submit(int requestedZone, Callable<T> request) throws Exception {
+        logQueueSize("received");
         try {
             int zoneDistance = Math.abs(requestedZone - serverZone);
             long latencyMs = NETWORK_LATENCY_MS + (long) zoneDistance * INTER_ZONE_LATENCY_MS;

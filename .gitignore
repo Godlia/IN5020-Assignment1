@@ -5,3 +5,4 @@ solution.jar
 *.db
 client-output.txt
 *.excalidraw
+output/
