@@ -160,10 +160,13 @@ public class Proxy implements ProxyInterface{
                 int queueLength = serverStub.getQueueLength();
                 synchronized (this) {
                     server.setQueLength(queueLength);
+                    if (VERBOSE) {
+                        System.out.println("Refreshed queue length for " + address.getIpAddress() + ": " + queueLength);
+                    }
                 }
             } catch (RemoteException | NotBoundException | ClassCastException exception) {
                 System.err.println("Could not refresh queue length for "
-                        + address.getServerName() + ": " + exception.getMessage());
+                        + address.getIpAddress() + ": " + exception.getMessage());
             }
         });
     }
