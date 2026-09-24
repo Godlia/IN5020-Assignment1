@@ -1,5 +1,6 @@
 package com.group2.proxy;
 
+import java.rmi.AlreadyBoundException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -11,24 +12,19 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import com.group2.server.ServerInterface;
-import com.group2.utils.serverAdress.ServerAdress;
-import com.group2.utils.serverInfo.ServerInfo;
+
 
 public class Proxy implements ProxyInterface{
-    public static void main(String[] args) throws RemoteException {
-        try {
-            Registry registry;
+    boolean VERBOSE = true;
+    public static void main(String[] args) throws RemoteException, NotBoundException {
             try {
-                registry = LocateRegistry.createRegistry(1099);
-            } catch (RemoteException e) {
-                registry = LocateRegistry.getRegistry("localhost", 1099);
+                Registry registry = LocateRegistry.createRegistry(1099);
+                Proxy proxy = new Proxy();
+                ProxyInterface proxyStub = (ProxyInterface) UnicastRemoteObject.exportObject(proxy, 0);
+                registry.bind("proxy", proxyStub);
+            } catch (RemoteException | AlreadyBoundException e) {
+                e.printStackTrace();
             }
-            Proxy proxy = new Proxy();
-            ProxyInterface proxyStub = (ProxyInterface) UnicastRemoteObject.exportObject(proxy, 0);
-            registry.rebind("proxy", proxyStub);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
     }
 
     private static final int MAX_WAITING_QUEUE_LENGTH = 18;
@@ -45,10 +41,12 @@ public class Proxy implements ProxyInterface{
         serverList[serverList.length - 1] = server;
         assignmentCounts.put(server, 0);
         // Print the server list for debugging purposes
-        System.out.println("Registered servers:");
-        for (ServerInfo registeredServer : serverList){
-            ServerAdress severAdress = registeredServer.getServerAdress();
-            System.out.println("Server Name: " + severAdress.getServerName() + ", Zone: " + registeredServer.getZone() + ", IP Address: " + severAdress.getIpAddress() + ", Port: " + severAdress.getPort());
+        if (VERBOSE) {
+            System.out.println("Registered servers:");
+            for (ServerInfo registeredServer : serverList){
+                ServerAdress severAdress = registeredServer.getServerAdress();
+                System.out.println("Server Name: " + severAdress.getServerName() + ", Zone: " + registeredServer.getZone() + ", IP Address: " + severAdress.getIpAddress() + ", Port: " + severAdress.getPort());
+            }
         }
     };
 
@@ -135,8 +133,8 @@ public class Proxy implements ProxyInterface{
             return Integer.MAX_VALUE;
         }
 
-        int from = Math.floorMod(fromZone - 1, highestZone) + 1;
-        return Math.floorMod(toZone - from, highestZone);
+        int from = Math.floorMod(fromZone - 1, highestZone) + 1; 
+        return Math.floorMod(toZone - from, highestZone); // Calculate clockwise distance considering wrap-around
     }
 
     private void refreshQueueLengthAsync(ServerInfo server) {

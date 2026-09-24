@@ -10,7 +10,7 @@ import java.rmi.server.UnicastRemoteObject;
 import java.sql.SQLException;
 
 import com.group2.proxy.ProxyInterface;
-import com.group2.utils.serverAdress.ServerAdress;
+import com.group2.proxy.ServerAdress;
 
 
 

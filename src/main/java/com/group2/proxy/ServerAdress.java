@@ -1,4 +1,4 @@
-package com.group2.utils.serverAdress;
+package com.group2.proxy;
 
 import java.io.Serializable;
 

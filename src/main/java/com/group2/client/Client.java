@@ -11,8 +11,8 @@ import java.util.Arrays;
 import java.util.Scanner;
 
 import com.group2.proxy.ProxyInterface;
+import com.group2.proxy.ServerAdress;
 import com.group2.server.ServerInterface;
-import com.group2.utils.serverAdress.ServerAdress;
 
 public class Client {
     public static void main(String[] args) {
