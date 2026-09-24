@@ -18,11 +18,26 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.group2.cache.Cache;
+import com.group2.cache.CacheKey;
+import com.group2.cache.CacheType;
+import com.group2.cache.EvictionPolicy;
 import com.group2.proxy.ProxyInterface;
 import com.group2.proxy.ServerAdress;
 import com.group2.server.ServerInterface;
 
 public class Client {
+    private static final boolean CACHE_ENABLED = "CLIENT".equalsIgnoreCase(
+            System.getenv().getOrDefault("CACHE_MODE", "NAIVE"));
+
+    private static final Cache<CacheKey, Object> CACHE = Cache.create(
+            CacheType.CLIENT,
+            EvictionPolicy.valueOf(
+                    System.getenv().getOrDefault("CACHE_POLICY", "LRU")
+                            .toUpperCase()
+            )
+    );
+
     private static final int DEFAULT_DELAY_MS = 20;
     private static final String DEFAULT_OUTPUT_FILE = "client-output.txt";
     private static final List<String> QUERY_METHODS = List.of(
@@ -125,7 +140,22 @@ public class Client {
             AtomicInteger completed, int totalQueries)
             throws RemoteException, NotBoundException, InterruptedException {
         RemoteServer remoteServer = connectToServer(request.zone());
+
+        // if caching is enabled, create cache key, if not, return null
+        CacheKey key = CACHE_ENABLED
+                ? CacheKey.of(request.methodName(), request.arguments())
+                : null;
+
+        // if caching is enabled, the key is now created, and here is the cache lookup. If not, it returns null.
+        Object result = CACHE_ENABLED ? CACHE.get(key) : null;
+
+        // OSCAR/EIRIK/VETLE -> HER TRENGS DET IMPLEMENTASJON
+        // Her trengs bare proxyen å kontaktes dersom det er cache miss (verdien vil da være null).
+        // OBS OBS, det svaret som kommer tilbake fra serveren, må stores i client cache, hvis enabled.
+        // Det gjøres generelt sånn her: CACHE.put(key, [resultatet fra serveren])
+
         long executionStart = System.nanoTime();
+
         Object result = invokeServer(remoteServer.server(), request);
         long finished = System.nanoTime();
 

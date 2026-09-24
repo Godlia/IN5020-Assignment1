@@ -9,8 +9,15 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.sql.SQLException;
 
+import com.group2.cache.Cache;
+import com.group2.cache.CacheType;
+import com.group2.cache.EvictionPolicy;
+import com.group2.cache.CacheKey;
 import com.group2.proxy.ProxyInterface;
 import com.group2.proxy.ServerAdress;
+
+import java.util.concurrent.Callable;
+
 
 
 
@@ -18,6 +25,11 @@ public class Server implements ServerInterface {
 
     private final ServerRepository repository;
     private final ServerRequestQueue requestQueue;
+    private final boolean cacheEnabled = "SERVER".equalsIgnoreCase(
+            System.getenv().getOrDefault("CACHE_MODE", "NAIVE"));
+    private final Cache<CacheKey, Object> cache = Cache.create(CacheType.SERVER,
+            EvictionPolicy.valueOf(System.getenv().getOrDefault("CACHE_POLICY", "LRU")
+                    .toUpperCase()));
 
     public Server() throws SQLException {
         this.repository = new ServerRepository();
@@ -48,10 +60,14 @@ public class Server implements ServerInterface {
 
     @Override
     public long getPopulationofCountry(String countryName, int requestedZone) {
-        // KINE: Hvis cashen skal implementeres slik at den hopper over køen, så må den skje her, før og istedenfor submiten
-        // KINE: Hvis cashen look-upen skal inn i køen, må den submittes, og requestQueue må endres til å håndtere que look-ups.
         try {
-            return requestQueue.submit(requestedZone, () -> repository.getPopulationOfCountry(countryName));
+            return requestQueue.submit(requestedZone,
+                    // this is being handed to request.Queue.submit, so it is in the queue
+                    // it asks the worker to check the cache
+                    () -> cached(
+                            CacheKey.of("getPopulationofCountry", countryName),
+                            // if cache miss, then run this repository method
+                            () -> repository.getPopulationOfCountry(countryName)));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -61,10 +77,13 @@ public class Server implements ServerInterface {
     @Override
     public int getNumberofCities(String countryName, int threshold, String comp, int requestedZone) {
         try {
-            // KINE: Hvis cashen skal implementeres slik at den hopper over køen, så må den skje her, før og istedenfor submiten
-            // KINE: Hvis cashen look-upen skal inn i køen, må den submittes, og requestQueue må endres til å håndtere que look-ups.
             return requestQueue.submit(requestedZone,
-                    () -> repository.getNumberOfCitiesFiltered(countryName, threshold, comp));
+                    // this is being handed to request.Queue.submit, so it is in the queue
+                    // it asks the worker to check the cache
+                    () -> cached(
+                            CacheKey.of("getNumberofCities", countryName, threshold, comp),
+                            // if cache miss, then run this repository method
+                            () -> repository.getNumberOfCitiesFiltered(countryName, threshold, comp)));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -73,12 +92,12 @@ public class Server implements ServerInterface {
 
     @Override
     public int getNumberofCountries(int citycount, int threshold, String comp, int requestedZone) {
-        // KINE: Hvis cashen skal implementeres slik at den hopper over køen, så må den skje her, før og istedenfor submiten
-        // KINE: Hvis cashen look-upen skal inn i køen, må den submittes, og requestQueue må endres til å håndtere que look-ups.
         try {
             return requestQueue.submit(requestedZone, () -> {
                 try {
-                    return repository.getNumberofCountries(citycount, threshold, comp);
+                    return cached(
+                            CacheKey.of("getNumberofCountries", citycount, threshold, comp),
+                            () -> repository.getNumberofCountries(citycount, threshold, comp));
                 } catch (SQLException | IllegalArgumentException exception) {
                     throw new IllegalStateException("Could not count countries", exception);
                 }
@@ -90,12 +109,12 @@ public class Server implements ServerInterface {
 
     @Override
     public int getNumberofCountriesMM(int citycount, int minpopulation, int maxpopulation, int requestedZone) {
-        // KINE: Hvis cashen skal implementeres slik at den hopper over køen, så må den skje her, før og istedenfor submiten
-        // KINE: Hvis cashen look-upen skal inn i køen, må den submittes, og requestQueue må endres til å håndtere que look-ups.
         try {
             return requestQueue.submit(requestedZone, () -> {
                 try {
-                    return repository.getNumberofCountriesMM(citycount, minpopulation, maxpopulation);
+                    return cached(
+                            CacheKey.of("getNumberofCountriesMM", citycount, minpopulation, maxpopulation),
+                            () -> repository.getNumberofCountriesMM(citycount, minpopulation, maxpopulation));
                 } catch (SQLException exception) {
                     throw new IllegalStateException("Could not count countries", exception);
                 }
@@ -121,6 +140,27 @@ public class Server implements ServerInterface {
         int zone = proxyStub.RegisterServer(serverAdress);
         System.out.println("Registered server on " + serverHost + ":" + serverPort + " with proxy.");
         return zone;
+    }
+
+    private <T> T cached(CacheKey key, Callable<T> databaseQuery) throws Exception {
+        // Option 1: if caching is turned off
+        if (!cacheEnabled) {
+            return databaseQuery.call();
+        }
+
+        // Option 2: caching is on, and the answer is in the cache
+        Object existing = cache.get(key);
+
+        if (existing != null) {
+            @SuppressWarnings("unchecked")
+            T result = (T) existing;
+            return result;
+        }
+
+        // Option 3: caching is on, but cache miss
+        T result = databaseQuery.call();
+        cache.put(key, result);
+        return result;
     }
 
 }
