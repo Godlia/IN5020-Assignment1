@@ -1,0 +1,90 @@
+name: IN5020
+
+services:
+  proxy:
+    build: .
+    environment:
+      APP_ROLE: proxy
+    ports:
+      - "1099:1099"
+    healthcheck:
+      test: ["CMD", "java", "-cp", "/in5020/target/assignment1.jar", "com.group2.proxy.ProxyHealthCheck"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 2s
+    
+
+  serverA:
+    build: .
+    image: in5020-servera
+    environment:
+      APP_ROLE: server
+      SERVER_HOST: serverA
+    depends_on:
+      proxy:
+        condition: service_healthy
+
+  serverB:
+    build: .
+    image: in5020-serverb
+    environment:
+      APP_ROLE: server
+      SERVER_HOST: serverB
+    depends_on:
+      proxy:
+        condition: service_healthy
+
+  serverC:
+    build: .
+    image: in5020-serverc
+    environment:
+      APP_ROLE: server
+      SERVER_HOST: serverC
+    depends_on:
+      proxy:
+        condition: service_healthy
+
+  serverD:
+    build: .
+    image: in5020-serverd
+    environment:
+      APP_ROLE: server
+      SERVER_HOST: serverD
+    depends_on:
+      proxy:
+        condition: service_healthy
+
+  serverE:
+    build: .
+    image: in5020-servere
+    environment:
+      APP_ROLE: server
+      SERVER_HOST: serverE
+    depends_on:
+      proxy:
+        condition: service_healthy
+
+
+  client:
+    build: .
+    environment:
+      APP_ROLE: client
+      QUERY_FILE: /in5020/exercise_1_input.txt
+      OUTPUT_FILE: /in5020/output/client-output.txt
+    volumes:
+      - ./exercise_1_input.txt:/in5020/exercise_1_input.txt:ro
+      - ./output:/in5020/output
+    depends_on:
+      proxy:
+        condition: service_healthy
+      serverA:
+        condition: service_started
+      serverB:
+        condition: service_started
+      serverC:
+        condition: service_started
+      serverD:
+        condition: service_started
+      serverE:
+        condition: service_started

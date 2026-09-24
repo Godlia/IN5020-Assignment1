@@ -35,7 +35,7 @@ public class Proxy implements ProxyInterface{
     private final ExecutorService queueRefreshExecutor = Executors.newCachedThreadPool();
     
     @Override
-    public synchronized void RegisterServer(ServerAdress serverAdress){
+    public synchronized int RegisterServer(ServerAdress serverAdress){
         serverList = java.util.Arrays.copyOf(serverList, serverList.length + 1);
         ServerInfo server = new ServerInfo(serverAdress, serverList.length);
         serverList[serverList.length - 1] = server;
@@ -48,6 +48,7 @@ public class Proxy implements ProxyInterface{
                 System.out.println("Server Name: " + severAdress.getServerName() + ", Zone: " + registeredServer.getZone() + ", IP Address: " + severAdress.getIpAddress() + ", Port: " + severAdress.getPort());
             }
         }
+        return server.getZone();
     };
 
     @Override
@@ -66,7 +67,8 @@ public class Proxy implements ProxyInterface{
             }
         }
 
-        return server.getServerAdress();
+        ServerAdress address = server.getServerAdress();
+        return new ServerAdress(address.getIpAddress(), address.getPort(), address.getServerName(), server.getZone());
     };
 
     private ServerInfo PriorityAlgorithm(int zone){
@@ -141,11 +143,9 @@ public class Proxy implements ProxyInterface{
         queueRefreshExecutor.submit(() -> {
             ServerAdress address = server.getServerAdress();
             try {
-                // Assumption: the registered server exposes getQueLength() through
-                // its RMI binding and returns its current waiting-list length.
                 Registry registry = LocateRegistry.getRegistry(address.getIpAddress(), address.getPort());
                 ServerInterface serverStub = (ServerInterface) registry.lookup(address.getServerName());
-                int queueLength = serverStub.getQueLength();
+                int queueLength = serverStub.getQueueLength();
                 synchronized (this) {
                     server.setQueLength(queueLength);
                 }

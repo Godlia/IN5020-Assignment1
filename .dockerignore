@@ -3,7 +3,6 @@
 .git
 .vscode
 .idea
-target
 book-original
 docker-tutorial-leftovers
 node_modules
