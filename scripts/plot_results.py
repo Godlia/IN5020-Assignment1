@@ -2,11 +2,17 @@
 Draws the graphs required by exercise_1.pdf, section "4 Result", plus a few
 comparison figures for the report.
 
-Required by the handout (one set per run, i.e. per cache mode and T):
+Input: one folder per run in output/, named <variant><T>, holding the client's
+output file <variant>.txt and the servers' queue logs server<A-E>-queue.log:
+  output/naive_server50/naive_server.txt   output/naive_server20/naive_server.txt
+  output/server_cache50/server_cache.txt   output/server_cache20/server_cache.txt
+  output/client_cache50/client_cache.txt   output/client_cache20/client_cache.txt
+
+Required by the handout (one set per run, i.e. per variant and T):
   <RUN>_turnaround   x: query number,   y: turn-around time
   <RUN>_queues       x: Unix timestamp, y: queue size, one panel per server
 
-Comparison figures across NAIVE / FIFO / LRU and T = 50 / T = 20:
+Comparison figures across naive server / server cache / client cache and T = 50 / T = 20:
   compare_turnaround     rolling mean of turn-around time per query
   compare_distribution   cumulative distribution (ECDF) of turn-around time
   compare_averages       average turn-around split into waiting / execution / rest
@@ -15,10 +21,12 @@ Comparison figures across NAIVE / FIFO / LRU and T = 50 / T = 20:
 
 It also writes summary.csv (the numbers behind the figures, for tables in the report).
 
-Usage:
-  python scripts/plot_results.py [output_dir] [--format png,pdf] [--window 50]
+Usage (from the repo folder):
+  python scripts/plot_results.py [output_dir] [--graph-dir graph] [--format png,pdf] [--window 50]
 
-Graphs are written to <output_dir>/graphs/. Only matplotlib, numpy and pandas are needed.
+Defaults: reads <repo>/output, writes to <repo>/graph (existing files with the same
+name are overwritten). Times switch from ms to seconds automatically when the
+slowest query takes longer than 10 s. Only matplotlib, numpy and pandas are needed.
 """
 import argparse
 import re
@@ -38,7 +46,7 @@ from matplotlib.ticker import FuncFormatter, MaxNLocator
 # --------------------------------------------------------------------------- #
 # Constants
 # --------------------------------------------------------------------------- #
-MODES = ["NAIVE", "FIFO", "LRU"]
+MODES = ["naive_server", "server_cache", "client_cache"]   # folder / file names
 DELAYS = [50, 20]
 SERVERS = ["A", "B", "C", "D", "E"]
 METHODS = ["getPopulationofCountry", "getNumberofCities",
@@ -53,8 +61,24 @@ LATENCY_MS = 80        # simulated same-zone latency (handout, 2.3)
 OVERLOAD_LIMIT = 18    # proxy redirects when the waiting list reaches this (handout, 1)
 
 # One fixed colour per cache mode, the same in every figure.
-MODE_COLORS = {"NAIVE": "#2a78d6", "FIFO": "#eb6834", "LRU": "#1baf7a"}
-MODE_LABELS = {"NAIVE": "Naive (no cache)", "FIFO": "FIFO cache", "LRU": "LRU / OLDEST cache"}
+MODE_COLORS = {"naive_server": "#2a78d6", "server_cache": "#eb6834", "client_cache": "#1baf7a"}
+MODE_LABELS = {"naive_server": "Naive server (no cache)", "server_cache": "Server-side cache",
+               "client_cache": "Client-side cache"}
+MODE_SHORT = {"naive_server": "Naive", "server_cache": "Server\ncache", "client_cache": "Client\ncache"}
+
+# Time unit for every figure. main() switches to seconds when the runs are slow;
+# the parsed data is divided by UNIT_DIV once, right after parsing.
+UNIT, UNIT_DIV = "ms", 1
+
+
+def fmt_t(v) -> str:
+    """A time value in the current unit, e.g. '113 ms' or '12.4 s'."""
+    return f"{v:,.0f} ms" if UNIT == "ms" else f"{v:,.1f} s"
+
+
+def num_t(v) -> str:
+    """Same as fmt_t but without the unit (for labels on bars)."""
+    return f"{v:,.0f}" if UNIT == "ms" else f"{v:,.1f}"
 
 # Text and chrome
 INK, MUTED, FAINT, GRID, SURFACE = "#0b0b0b", "#52514e", "#8a8984", "#e6e5e0", "#ffffff"
@@ -153,15 +177,21 @@ def subtitle(ax, text):
     ax.text(0, 1.02, text, transform=ax.transAxes, color=MUTED, fontsize=9, va="bottom")
 
 
-def latency_line(ax, orientation="h"):
-    """Hairline at the 80 ms simulated latency: no query can be faster than this."""
+def latency_line(ax, orientation="h", top=None):
+    """Hairline at the 80 ms simulated latency: no query can be faster than this.
+
+    Skipped on a linear axis where 80 ms would sit right on top of zero (top = axis maximum).
+    """
+    lat = LATENCY_MS / UNIT_DIV
+    if top is not None and lat < 0.03 * top:
+        return
     if orientation == "h":
-        ax.axhline(LATENCY_MS, color=FAINT, linewidth=0.9, zorder=1)
-        ax.text(1.0, LATENCY_MS, f" {LATENCY_MS} ms latency", transform=ax.get_yaxis_transform(),
+        ax.axhline(lat, color=FAINT, linewidth=0.9, zorder=1)
+        ax.text(1.0, lat, f" {LATENCY_MS} ms latency", transform=ax.get_yaxis_transform(),
                 color=MUTED, fontsize=8, va="center", ha="left")
     else:
-        ax.axvline(LATENCY_MS, color=FAINT, linewidth=0.9, zorder=1)
-        ax.text(LATENCY_MS, 1.0, f"{LATENCY_MS} ms latency ", transform=ax.get_xaxis_transform(),
+        ax.axvline(lat, color=FAINT, linewidth=0.9, zorder=1)
+        ax.text(lat, 1.0, f"{LATENCY_MS} ms latency ", transform=ax.get_xaxis_transform(),
                 color=MUTED, fontsize=8, va="top", ha="right", rotation=90)
 
 
@@ -207,16 +237,17 @@ def plot_turnaround(df: pd.DataFrame, mode: str, delay: int, window: int, out: P
 
     ax.plot(df["query"], roll.median(), color=INK, linewidth=1.6,
             label=f"Rolling median ({window} queries)", zorder=3)
-    latency_line(ax)
 
     t = df["turnaround"]
+    top = max(t.max() * 1.05, 2 * LATENCY_MS / UNIT_DIV)
+    latency_line(ax, top=top)
     ax.set_title(f"{MODE_LABELS[mode]} — turn-around time per query, T = {delay} ms")
-    subtitle(ax, f"{len(df):,} queries  ·  mean {t.mean():.0f} ms  ·  median {t.median():.0f} ms"
-                 f"  ·  95th pct {t.quantile(0.95):.0f} ms  ·  max {t.max():,} ms")
+    subtitle(ax, f"{len(df):,} queries  ·  mean {fmt_t(t.mean())}  ·  median {fmt_t(t.median())}"
+                 f"  ·  95th pct {fmt_t(t.quantile(0.95))}  ·  max {fmt_t(t.max())}")
     ax.set_xlabel("Query number (order in the input file)")
-    ax.set_ylabel("Turn-around time (ms)")
+    ax.set_ylabel(f"Turn-around time ({UNIT})")
     ax.set_xlim(0, len(df) + 1)
-    ax.set_ylim(0, max(t.max() * 1.05, LATENCY_MS * 2))
+    ax.set_ylim(0, top)
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), ncols=3)
     save(fig, out, formats)
 
@@ -247,7 +278,7 @@ def plot_queues(logs: dict, mode: str, delay: int, out: Path, formats):
             ax.axhline(OVERLOAD_LIMIT, color=FAINT, linewidth=0.9)
             ax.text(1.0, OVERLOAD_LIMIT, f" overload {OVERLOAD_LIMIT}", transform=ax.get_yaxis_transform(),
                     color=MUTED, fontsize=8, va="center", ha="left")
-        ax.set_ylim(0, (OVERLOAD_LIMIT if show_limit else ymax) + 1.5)
+        ax.set_ylim(0, max(ymax, OVERLOAD_LIMIT if show_limit else 0) * 1.12 + 1)
         ax.yaxis.set_major_locator(MaxNLocator(integer=True, nbins=3))
         ax.grid(axis="x", visible=False)
 
@@ -281,13 +312,14 @@ def plot_turnaround_comparison(clients: dict, window: int, out: Path, formats):
             df = clients[(m, d)]
             ax.plot(df["query"], df["turnaround"].rolling(window, center=True, min_periods=1).mean(),
                     color=MODE_COLORS[m], linewidth=1.6)
-        latency_line(ax)
         ax.text(0.005, 0.95, f"T = {d} ms", transform=ax.transAxes, fontweight="bold", va="top")
-        ax.set_ylabel("Turn-around (ms)")
-    top = max(line.get_ydata().max() for ax in axes for line in ax.get_lines() if len(line.get_ydata()) > 2)
-    axes[0].set_ylim(0, top * 1.05)
+        ax.set_ylabel(f"Turn-around ({UNIT})")
+    top = max(line.get_ydata().max() for ax in axes for line in ax.get_lines()) * 1.05
+    for ax in axes:
+        latency_line(ax, top=top)
+    axes[0].set_ylim(0, top)
     axes[0].set_title(f"Turn-around time over the run — rolling mean of {window} queries")
-    subtitle(axes[0], "Same input file in every run; peaks are bursts of slow queries hitting the same servers.")
+    subtitle(axes[0], "Same input file in every run, so the lines can be compared query by query.")
     mode_legend(axes[0], [m for m in MODES if any(k[0] == m for k in clients)],
                 loc="upper right", ncols=3)
     axes[-1].set_xlabel("Query number (order in the input file)")
@@ -304,7 +336,8 @@ def plot_distribution(clients: dict, out: Path, formats):
         for m in MODES:
             if (m, d) not in clients:
                 continue
-            t = np.sort(clients[(m, d)]["turnaround"].to_numpy())
+            # log axis: a 0 ms answer (client-cache hit) is drawn at 1 ms
+            t = np.sort(np.maximum(clients[(m, d)]["turnaround"].to_numpy(), 1 / UNIT_DIV))
             y = np.arange(1, len(t) + 1) / len(t)
             ax.step(t, y, where="post", color=MODE_COLORS[m], linewidth=1.8)
             med = np.median(t)
@@ -313,7 +346,7 @@ def plot_distribution(clients: dict, out: Path, formats):
         ax.axhline(0.5, color=GRID, linewidth=0.9)
         ax.set_xscale("log")
         ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:g}"))
-        ax.set_xlabel("Turn-around time (ms, log scale)")
+        ax.set_xlabel(f"Turn-around time ({UNIT}, log scale; 0 ms drawn at 1 ms)")
         ax.set_ylim(0, 1.01)
         ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0%}"))
         ax.set_title(f"T = {d} ms", pad=8)
@@ -342,11 +375,11 @@ def plot_average_breakdown(clients: dict, out: Path, formats):
                 v = df[col].mean()
                 ax.barh(y, v, left=left, height=0.62, color=PART_COLORS[part],
                         edgecolor=SURFACE, linewidth=2)
-                if v >= 12:
-                    ax.text(left + v / 2, y, f"{v:.0f}", ha="center", va="center", fontsize=8,
+                if v >= 0.07 * xmax:
+                    ax.text(left + v / 2, y, num_t(v), ha="center", va="center", fontsize=8,
                             color=SURFACE if part != "Waiting" else INK)
                 left += v
-            ax.text(df["turnaround"].mean() + xmax * 0.01, y, f"{df['turnaround'].mean():.0f} ms",
+            ax.text(df["turnaround"].mean() + xmax * 0.01, y, fmt_t(df["turnaround"].mean()),
                     va="center", fontsize=9, color=INK, fontweight="bold")
             # colour chip carries the mode identity (the bars are neutral grey)
             ax.add_patch(plt.Rectangle((-0.02, y - 0.31), 0.012, 0.62, transform=ax.get_yaxis_transform(),
@@ -355,7 +388,7 @@ def plot_average_breakdown(clients: dict, out: Path, formats):
         ax.tick_params(axis="y", pad=12, labelcolor=INK)
         ax.set_xlim(0, xmax)
         ax.grid(axis="y", visible=False)
-        ax.set_xlabel("Average time per query (ms)")
+        ax.set_xlabel(f"Average time per query ({UNIT})")
         ax.set_title(f"T = {d} ms", pad=8)
     handles = [Patch(color=PART_COLORS["Waiting"], label="Waiting"),
                Patch(color=PART_COLORS["Execution"], label="Execution"),
@@ -380,12 +413,14 @@ def plot_by_method(clients: dict, out: Path, formats):
             means = clients[(m, d)].groupby("method")["turnaround"].mean().reindex(METHODS)
             offs = (i - (len(modes) - 1) / 2) * width
             bars = ax.bar(x + offs, means, width, color=MODE_COLORS[m], edgecolor=SURFACE, linewidth=2)
-            ax.bar_label(bars, fmt="%.0f", fontsize=7.5, color=MUTED, padding=2)
-        latency_line(ax)
+            ax.bar_label(bars, labels=[num_t(v) for v in means], fontsize=7.5, color=MUTED, padding=2)
         ax.set_xticks(x, [METHOD_SHORT[mt] for mt in METHODS], fontsize=8.5)
         ax.grid(axis="x", visible=False)
         ax.set_title(f"T = {d} ms", pad=8)
-    axes[0].set_ylabel("Average turn-around time (ms)")
+    top = max(ax.get_ylim()[1] for ax in axes)
+    for ax in axes:
+        latency_line(ax, top=top)
+    axes[0].set_ylabel(f"Average turn-around time ({UNIT})")
     fig.suptitle("Average turn-around time per remote method", x=0.02, ha="left",
                  fontweight="bold", fontsize=12)
     handles = [Patch(color=MODE_COLORS[m], label=MODE_LABELS[m]) for m in MODES
@@ -415,7 +450,7 @@ def plot_queue_heatmap(queues: dict, out: Path, formats, bin_ms: int = 1000):
         ax.grid(False)
         for s in ax.spines.values():
             s.set_visible(False)
-        ax.set_ylabel(f"{m}\nT = {d}", rotation=0, ha="right", va="center", color=INK, fontsize=9, labelpad=8)
+        ax.set_ylabel(f"{MODE_SHORT[m]}\nT = {d}", rotation=0, ha="right", va="center", color=INK, fontsize=9, labelpad=8)
         ax.text(1.005, 0.5, f"max {int(np.nanmax(grid))}", transform=ax.transAxes, fontsize=8,
                 color=MUTED, va="center")
     axes[-1].set_xlim(0, longest)
@@ -437,14 +472,18 @@ def write_summary(clients: dict, queues: dict, out: Path):
     rows = []
     for (m, d), df in clients.items():
         t = df["turnaround"]
-        row = {"mode": m, "T_ms": d, "queries": len(df),
-               "turnaround_mean": round(t.mean(), 1), "turnaround_median": t.median(),
-               "turnaround_p95": t.quantile(0.95), "turnaround_max": t.max(),
-               "execution_mean": round(df["execution"].mean(), 1),
-               "waiting_mean": round(df["waiting"].mean(), 1),
-               "rest_mean": round(df["rest"].mean(), 1),
+        served_by = df["server"].str.strip()
+        known = served_by.str.isdigit()
+        row = {"variant": m, "T_ms": d, "unit": UNIT, "queries": len(df),
+               "turnaround_mean": round(t.mean(), 2), "turnaround_median": round(t.median(), 2),
+               "turnaround_p95": round(t.quantile(0.95), 2), "turnaround_max": round(t.max(), 2),
+               "execution_mean": round(df["execution"].mean(), 2),
+               "waiting_mean": round(df["waiting"].mean(), 2),
+               "rest_mean": round(df["rest"].mean(), 2),
                "client_cache_hits_marked": int(df["client_hit"].sum()),
-               "redirected_to_other_zone": int((df["zone"].astype(str) != df["server"].str.strip()).sum())}
+               # only countable when the output names the server by number ("processed by Server 3")
+               "redirected_to_other_zone": (int((df["zone"].astype(str)[known] != served_by[known]).sum())
+                                            if known.all() else "unknown")}
         for s, q in queues.get((m, d), {}).items():
             row[f"queue_peak_{s}"] = int(q["size"].max())
         rows.append(row)
@@ -454,8 +493,11 @@ def write_summary(clients: dict, queues: dict, out: Path):
 # --------------------------------------------------------------------------- #
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("output_dir", nargs="?",
-                    default=Path(__file__).resolve().parent.parent / "output", type=Path)
+    repo = Path(__file__).resolve().parent.parent
+    ap.add_argument("output_dir", nargs="?", default=repo / "output", type=Path,
+                    help="folder with the run folders (default: <repo>/output)")
+    ap.add_argument("--graph-dir", default=repo / "graph", type=Path,
+                    help="where the graphs go (default: <repo>/graph)")
     ap.add_argument("--format", default="png",
                     help="comma-separated, e.g. png,pdf (pdf/svg stay sharp in the report)")
     ap.add_argument("--window", type=int, default=50, help="rolling window in queries (default 50)")
@@ -463,33 +505,49 @@ def main():
     formats = [f.strip().lower() for f in args.format.split(",") if f.strip()]
 
     style()
-    graph_dir = args.output_dir / "graphs"
+    graph_dir = args.graph_dir
     graph_dir.mkdir(parents=True, exist_ok=True)
 
+    # 1. read every run that exists
     clients, queues = {}, {}
     for mode in MODES:
         for delay in DELAYS:
             run = args.output_dir / f"{mode}{delay}"
-            if not run.is_dir():
-                print(f"skip {run.name}: not found")
+            result_file = run / f"{mode}.txt"
+            if not result_file.exists():
+                print(f"skip {run.name}: {result_file.name} not found")
                 continue
-            df = parse_client_output(run / "client-output.txt")
-            clients[(mode, delay)] = df
-            plot_turnaround(df, mode, delay, args.window, graph_dir / f"{mode}{delay}_turnaround", formats)
-
+            clients[(mode, delay)] = parse_client_output(result_file)
             logs = {s: parse_queue_log(run / f"server{s}-queue.log")
                     for s in SERVERS if (run / f"server{s}-queue.log").exists()}
             if logs:
                 queues[(mode, delay)] = logs
-                plot_queues(logs, mode, delay, graph_dir / f"{mode}{delay}_queues", formats)
-            print(f"{run.name}: {len(df)} queries, {sum(map(len, logs.values()))} queue events")
+            print(f"{run.name}: {len(clients[(mode, delay)])} queries, "
+                  f"{sum(map(len, logs.values()))} queue events")
+    if not clients:
+        print(f"No runs found in {args.output_dir}")
+        return
 
-    if clients:
-        plot_turnaround_comparison(clients, args.window, graph_dir / "compare_turnaround", formats)
-        plot_distribution(clients, graph_dir / "compare_distribution", formats)
-        plot_average_breakdown(clients, graph_dir / "compare_averages", formats)
-        plot_by_method(clients, graph_dir / "compare_by_method", formats)
-        write_summary(clients, queues, graph_dir / "summary.csv")
+    # 2. one time unit for all figures: seconds if the slowest query took more than 10 s
+    global UNIT, UNIT_DIV
+    if max(df["turnaround"].max() for df in clients.values()) > 10_000:
+        UNIT, UNIT_DIV = "s", 1000
+        for df in clients.values():
+            for col in ["turnaround", "execution", "waiting", "rest"]:
+                df[col] = df[col] / UNIT_DIV
+
+    # 3. per-run figures
+    for (mode, delay), df in clients.items():
+        plot_turnaround(df, mode, delay, args.window, graph_dir / f"{mode}{delay}_turnaround", formats)
+        if (mode, delay) in queues:
+            plot_queues(queues[(mode, delay)], mode, delay, graph_dir / f"{mode}{delay}_queues", formats)
+
+    # 4. comparison figures + table
+    plot_turnaround_comparison(clients, args.window, graph_dir / "compare_turnaround", formats)
+    plot_distribution(clients, graph_dir / "compare_distribution", formats)
+    plot_average_breakdown(clients, graph_dir / "compare_averages", formats)
+    plot_by_method(clients, graph_dir / "compare_by_method", formats)
+    write_summary(clients, queues, graph_dir / "summary.csv")
     if queues:
         plot_queue_heatmap(queues, graph_dir / "compare_queues", formats)
     print(f"Graphs written to {graph_dir}")
