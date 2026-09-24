@@ -60,15 +60,15 @@ $runScenario = {
 	if ($Backup) {
 		$outputFilename = "$CacheType.txt"
 		switch ($CacheType) {
-			'naive-server' {
+			'naive_server' {
 				$serverCacheType = 'NAIVE'
 				$clientCacheMode = 'NAIVE'
 			}
-			'cache-server' {
+			'server_cache' {
 				$serverCacheType = 'FIFO'
 				$clientCacheMode = 'NAIVE'
 			}
-			'client-cache' {
+			'client_cache' {
 				$serverCacheType = 'NAIVE'
 				$clientCacheMode = 'FIFO'
 			}

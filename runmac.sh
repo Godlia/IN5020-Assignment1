@@ -56,15 +56,15 @@ for cache_type in "${cache_types[@]}"; do
 			run_name="${cache_type}${client_delay_ms}"
 			output_filename="${cache_type}.txt"
 			case "$cache_type" in
-				naive-server)
+				naive_server)
 					server_cache_type=NAIVE
 					client_cache_mode=NAIVE
 					;;
-				cache-server)
+				server_cache)
 					server_cache_type=FIFO
 					client_cache_mode=NAIVE
 					;;
-				client-cache)
+				client_cache)
 					server_cache_type=NAIVE
 					client_cache_mode=FIFO
 					;;
