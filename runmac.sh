@@ -14,7 +14,7 @@ if [[ "${1:-}" == "--backup" ]]; then
 fi
 
 if [[ "$backup" == true ]]; then
-	cache_types=(naive-server cache-server client-cache)
+	cache_types=(naive_server server_cache client_cache)
 else
 	cache_types=(FIFO LRU NAIVE)
 fi

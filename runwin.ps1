@@ -10,7 +10,7 @@ if ($args.Count -gt 1 -or ($args.Count -eq 1 -and -not $backup)) {
 }
 
 if ($backup) {
-	$cacheTypes = @('naive-server', 'cache-server', 'client-cache')
+	$cacheTypes = @('naive_server', 'server_cache', 'client_cache')
 } else {
 	$cacheTypes = @('FIFO', 'LRU', 'NAIVE')
 }
