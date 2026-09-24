@@ -34,7 +34,7 @@ final class ServerRequestQueue {
         try {
             int zoneDistance = Math.abs(requestedZone - serverZone);
             long latencyMs = NETWORK_LATENCY_MS + (long) zoneDistance * INTER_ZONE_LATENCY_MS;
-            System.out.println("Was requested zone :" + requestedZone + ". We are: " + serverZone + ". Latency given = " + latencyMs + ". ");
+            //System.out.println("Was requested zone :" + requestedZone + ". We are: " + serverZone + ". Latency given = " + latencyMs + ". ");
             TimeUnit.MILLISECONDS.sleep(latencyMs);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();

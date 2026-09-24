@@ -18,7 +18,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.group2.cache.Cache;
 import com.group2.cache.CacheKey;
@@ -65,7 +64,6 @@ public class Client {
             for (QueryResult result : results) {
                 String line = result.format();
                 outputLines.add(line);
-                System.out.println(line);
             }
             //averages for methods
             for (String methodName : QUERY_METHODS) {
@@ -123,7 +121,6 @@ public class Client {
         //start independent thread for async method invocation, and its components
         ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
         List<Future<QueryResult>> futures = new ArrayList<>();
-        AtomicInteger completed = new AtomicInteger();
         long firstStart = System.nanoTime();
 
         //fetches all the requests and starts the thread to await response from executeQuery()
@@ -137,7 +134,7 @@ public class Client {
                     if (delay > 0) {
                         TimeUnit.NANOSECONDS.sleep(delay);
                     }
-                    return executeQuery(request, scheduledStart, completed, requests.size());
+                    return executeQuery(request, scheduledStart);
                 }));
             }
 
@@ -156,8 +153,7 @@ public class Client {
 
     Checks the cache for a hit, otherwise connects to the proxy for a server-stub,
     then executes.
-     */    private static QueryResult executeQuery(QueryRequest request, long scheduledStart,
-            AtomicInteger completed, int totalQueries)
+    */    private static QueryResult executeQuery(QueryRequest request, long scheduledStart)
             throws RemoteException, NotBoundException, InterruptedException {
 
         long executionStart = System.nanoTime();
@@ -168,10 +164,7 @@ public class Client {
                 System.out.println("Cache hit for query: " + request.originalQuery());
                 QueryResult queryResult = timedResult(request, cachedResponse.result(),
                         cachedResponse.serverAddress(), scheduledStart, executionStart);
-                int completedQueries = completed.incrementAndGet();
-                if (completedQueries % 10 == 0 || completedQueries == totalQueries) {
-                    System.out.println("Progress: completed " + completedQueries + "/" + totalQueries + " queries.");
-                }
+                printInvocationResult(queryResult);
                 return queryResult;
             }
         }
@@ -180,17 +173,17 @@ public class Client {
         Object result = invokeServer(remoteServer.server(), request); //invoke to the server
         QueryResult queryResult = timedResult(request, result, remoteServer.address(),
                 scheduledStart, executionStart);
+        printInvocationResult(queryResult);
 
         if (CACHE_ENABLED) {
             CACHE.put(key, new CachedResponse(result, remoteServer.address()));
         }
 
-        int completedQueries = completed.incrementAndGet();
-        if (completedQueries % 10 == 0 || completedQueries == totalQueries) {
-            System.out.println("Progress: completed " + completedQueries + "/" + totalQueries + " queries.");
-        }
-
         return queryResult;
+    }
+
+    private static void printInvocationResult(QueryResult queryResult) {
+        System.out.println(queryResult.format());
     }
 
     //get the result with the amassed time taken
