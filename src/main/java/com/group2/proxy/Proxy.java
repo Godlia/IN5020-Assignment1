@@ -83,7 +83,7 @@ public class Proxy implements ProxyInterface{
             return null;
         }
 
-        // Under maximum queue length condition
+        // Bellow maximum queue length condition
         if (sameZone.getQueLength() < MAX_WAITING_QUEUE_LENGTH) {
             return sameZone;
         }
@@ -109,7 +109,7 @@ public class Proxy implements ProxyInterface{
         if (VERBOSE) {
             // Catches only if it assigns to another zone, which is not the same zone as the request.
             if (best.getZone() != effectiveZone) {
-                System.out.println("Zone " + zone + " is overloaded. Assigning to zone " + best.getZone() + " instead.");
+                System.out.println("NOTE: Zone " + zone + " overloaded. ---> Assigning to zone " + best.getZone());
             }       
         }
 
@@ -161,7 +161,7 @@ public class Proxy implements ProxyInterface{
                 synchronized (this) {
                     server.setQueLength(queueLength);
                     if (VERBOSE) {
-                        System.out.println("Refreshed queue length for " + address.getIpAddress() + ": " + queueLength);
+                        System.out.println("Zone " + server.getZone() + " queue length: " + queueLength);
                     }
                 }
             } catch (RemoteException | NotBoundException | ClassCastException exception) {
