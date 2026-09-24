@@ -15,9 +15,12 @@ import com.group2.server.ServerInterface;
 
 
 public class Proxy implements ProxyInterface{
-    boolean VERBOSE = Boolean.parseBoolean(System.getenv().getOrDefault("VERBOSE", "false"));
+    boolean VERBOSE = Boolean.parseBoolean(System.getenv().getOrDefault("VERBOSE", "false")); // For DEBUGGING
+    private static final int MAX_WAITING_QUEUE_LENGTH = 18;
+
     public static void main(String[] args) throws RemoteException, NotBoundException {
             try {
+                // Binds the proxy to the RMI registry in its own container
                 Registry registry = LocateRegistry.createRegistry(1099);
                 Proxy proxy = new Proxy();
                 ProxyInterface proxyStub = (ProxyInterface) UnicastRemoteObject.exportObject(proxy, 0);
@@ -27,18 +30,24 @@ public class Proxy implements ProxyInterface{
             }
     }
 
-    private static final int MAX_WAITING_QUEUE_LENGTH = 18;
+    // Storing the info related to retriving the servers
+    private ServerInfo[] serverList = new ServerInfo[0]; 
 
-    // Table of registered servers, in registration order.
-    private ServerInfo[] serverList = new ServerInfo[0];
-    private final Map<ServerInfo, Integer> assignmentCounts = new HashMap<>();
+    // Used to track so that the proxy only retrives the queue length when the server has been assigned MAX_WAITING_QUEUE_LENGTH times.
+    private final Map<ServerInfo, Integer> assignmentCounts = new HashMap<>(); 
+
+    // Used so that the queue length refreshes are done asynchronously and do not block the main thread.
     private final ExecutorService queueRefreshExecutor = Executors.newCachedThreadPool();
+
     
     @Override
     public synchronized int RegisterServer(ServerAdress serverAdress){
+
+        // Appends new server to serverList and assignmenCounts
         serverList = java.util.Arrays.copyOf(serverList, serverList.length + 1);
         ServerInfo server = new ServerInfo(serverAdress, serverList.length);
         serverList[serverList.length - 1] = server;
+
         assignmentCounts.put(server, 0);
         // Print the server list for debugging purposes
         if (VERBOSE) {
@@ -55,20 +64,22 @@ public class Proxy implements ProxyInterface{
     public ServerAdress RequestServer(int zone){
         ServerInfo server;
         synchronized (this) {
+            // Handles everything related to desiding which zone is the right given our conditions.
             server = PriorityAlgorithm(zone);
-            if (server == null) {
+            if (server == null) { // Failsafe in case servers don't exist yet, but should never happen because Docker compose does health checks
                 return null;
             }
 
-            int assignments = assignmentCounts.merge(server, 1, Integer::sum);
+            int assignments = assignmentCounts.merge(server, 1, Integer::sum); // Counts upward how many times the server has been assigned.
             if (assignments >= MAX_WAITING_QUEUE_LENGTH) {
-                assignmentCounts.put(server, 0);
+                // If threshold is reached, refresh the queue length asynchronously and reset the count.
                 refreshQueueLengthAsync(server);
+                assignmentCounts.put(server, 0);
             }
         }
 
-        ServerAdress address = server.getServerAdress();
-        return new ServerAdress(address.getIpAddress(), address.getPort(), address.getServerName(), server.getZone());
+        ServerAdress address = server.getServerAdress(); // Gets the part the client needs (with info on how to connect to the server)
+        return address;
     };
 
     private ServerInfo PriorityAlgorithm(int zone){
@@ -76,7 +87,8 @@ public class Proxy implements ProxyInterface{
             return null;
         }
 
-        // If the zone exists, this part just returns the server in the same zone
+        // Given health check in docker-compose, this will just return the same zone, 
+        // but it is there to foolproof, to use the next available server as described in the assignment.
         int effectiveZone = findClockwiseZone(zone);
         ServerInfo sameZone = findServerInZone(effectiveZone);
         if (sameZone == null) {
@@ -88,16 +100,35 @@ public class Proxy implements ProxyInterface{
             return sameZone;
         }
 
+        // If none of the if cathes above return something, it falls through to find the shortest queue length.
+        // As described in the assignment it both gets the shortest, and does in a clockwise manner.
+        // It balances thouse two conditions by prioritising the shortest over all, but if two servers have the same queue length, it will choose the one that is closest in a clockwise manner.
         ServerInfo best = null;
         for (ServerInfo candidate : serverList) {
             if (candidate.getQueLength() >= MAX_WAITING_QUEUE_LENGTH) {
-                continue;
+                continue; // Skip servers that are overloaded, as pr. assignment instructions.
             }
 
-            if (best == null || candidate.getQueLength() < best.getQueLength()
-                    || (candidate.getQueLength() == best.getQueLength()
-                    && clockwiseDistance(effectiveZone, candidate.getZone())
-                    < clockwiseDistance(effectiveZone, best.getZone()))) {
+            boolean shouldSelectCandidate = best == null;
+
+            if (!shouldSelectCandidate) {
+                int candidateQueueLength = candidate.getQueLength();
+                int bestQueueLength = best.getQueLength();
+                boolean candidateHasShorterQueue = candidateQueueLength < bestQueueLength;
+                boolean queueLengthsAreEqual = candidateQueueLength == bestQueueLength;
+
+                boolean candidateIsCloserClockwise = false;
+                if (queueLengthsAreEqual) {
+                    int candidateClockwiseDistance = clockwiseDistance(effectiveZone, candidate.getZone());
+                    int bestClockwiseDistance = clockwiseDistance(effectiveZone, best.getZone());
+                    candidateIsCloserClockwise = candidateClockwiseDistance < bestClockwiseDistance;
+                }
+
+                shouldSelectCandidate = candidateHasShorterQueue
+                        || (queueLengthsAreEqual && candidateIsCloserClockwise);
+            }
+
+            if (shouldSelectCandidate) {
                 best = candidate;
             }
         }
@@ -117,6 +148,7 @@ public class Proxy implements ProxyInterface{
     }
 
     private ServerInfo findServerInZone(int zone) {
+        // Utility function to find the right ServerInfo object given a zone int.
         for (ServerInfo server : serverList) {
             if (server.getZone() == zone) {
                 return server;
@@ -126,6 +158,8 @@ public class Proxy implements ProxyInterface{
     }
 
     private int findClockwiseZone(int zone) {
+        // If the zone is available, it will just return the same zone, 
+        // but if not, it will find the closest zone in a clockwise manner.
         int closestDistance = Integer.MAX_VALUE;
         int closestZone = -1;
         for (ServerInfo server : serverList) {
@@ -139,6 +173,8 @@ public class Proxy implements ProxyInterface{
     }
 
     private int clockwiseDistance(int fromZone, int toZone) {
+        // Calculates the clockwise distance between two zones, considering wrap-around.
+        // If from fromZone is 5 and toZone is 2, it will return 4, because it goes from 5 -> 1 -> 2.
         int highestZone = 0;
         for (ServerInfo server : serverList) {
             highestZone = Math.max(highestZone, server.getZone());
@@ -152,12 +188,16 @@ public class Proxy implements ProxyInterface{
     }
 
     private void refreshQueueLengthAsync(ServerInfo server) {
+        // Refreshes the queue length of the server asynchronously to avoid blocking the main thread.
         queueRefreshExecutor.submit(() -> {
             ServerAdress address = server.getServerAdress();
             try {
+                // Gets the server stub and gets the queue length.
                 Registry registry = LocateRegistry.getRegistry(address.getIpAddress(), address.getPort());
                 ServerInterface serverStub = (ServerInterface) registry.lookup(address.getServerName());
                 int queueLength = serverStub.getQueueLength();
+
+                // This part is synchronized to ensure that the queue length is updated safely in a multi-threaded environment.
                 synchronized (this) {
                     server.setQueLength(queueLength);
                     if (VERBOSE) {
