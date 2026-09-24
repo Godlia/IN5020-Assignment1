@@ -3,8 +3,6 @@
 .git
 .vscode
 .idea
-book-original
-docker-tutorial-leftovers
 node_modules
 *.md
 scripts
