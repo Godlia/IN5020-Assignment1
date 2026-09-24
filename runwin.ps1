@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $ScriptDir = $PSScriptRoot
 Set-Location $ScriptDir
 
-$backup = $args.Count -eq 1 -and $args[0] -eq '--backup'
+$backup = $args.Count -eq 0 -or ($args.Count -eq 1 -and $args[0] -eq '--backup')
 if ($args.Count -gt 1 -or ($args.Count -eq 1 -and -not $backup)) {
 	Write-Error "Usage: .\runwin.ps1 [--backup]"
 	exit 2

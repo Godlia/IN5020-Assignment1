@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-backup=false
+backup=true
 if (( $# > 1 )) || { (( $# == 1 )) && [[ "$1" != "--backup" ]]; }; then
 	echo "Usage: $0 [--backup]" >&2
 	exit 2
