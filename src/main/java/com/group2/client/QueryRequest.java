@@ -3,6 +3,8 @@ package com.group2.client;
 import java.util.Arrays;
 
 record QueryRequest(String originalQuery, String methodName, Object[] arguments, int zone) {
+    
+    //parse string into a queryrequest
     static QueryRequest parse(String line) {
         String[] tokens = line.split("\\s+");
         int zoneIndex = -1;
@@ -24,6 +26,7 @@ record QueryRequest(String originalQuery, String methodName, Object[] arguments,
         return new QueryRequest(line, methodName, arguments, zone);
     }
 
+    //Builds argumentsObj based on the methodName 
     private static Object[] buildArguments(String methodName, String[] tokens) {
         return switch (methodName) {
             case "getPopulationofCountry" -> new Object[] { String.join(" ", tokens) };

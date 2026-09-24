@@ -2,6 +2,7 @@ package com.group2.client;
 
 import com.group2.proxy.ServerAdress;
 
+//Holds the result from the server and its metadata
 record QueryResult(QueryRequest request, Object result, ServerAdress serverAddress,
         long turnaroundMs, long executionMs, long waitingMs) {
     String format() {
@@ -9,7 +10,7 @@ record QueryResult(QueryRequest request, Object result, ServerAdress serverAddre
                 + " ms, execution time: " + executionMs + " ms, waiting time: " + waitingMs
                 + " ms, processed by Server " + serverNumber(serverAddress) + ")";
     }
-
+    
     private static String serverNumber(ServerAdress address) {
         if (address.getServerNumber() > 0) {
             return Integer.toString(address.getServerNumber());

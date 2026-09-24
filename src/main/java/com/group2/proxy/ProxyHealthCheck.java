@@ -6,7 +6,7 @@ import java.rmi.registry.Registry;
 public final class ProxyHealthCheck {
     private ProxyHealthCheck() {
     }
-
+    //Docker compose will run this class to check the health of the server.
     public static void main(String[] args) {
         try {
             Registry registry = LocateRegistry.getRegistry("localhost", 1099);

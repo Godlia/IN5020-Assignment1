@@ -30,18 +30,20 @@ import com.group2.server.ServerInterface;
 
 public class Client {
 
-        private static final String CACHE_MODE = System.getenv("CACHE_MODE");
-        private static final boolean CACHE_ENABLED = CACHE_MODE != null
+    //determine cachemode and instantiate it
+    private static final String CACHE_MODE = System.getenv("CACHE_MODE");
+    private static final boolean CACHE_ENABLED = CACHE_MODE != null
             && ("LRU".equalsIgnoreCase(CACHE_MODE)
             || "FIFO".equalsIgnoreCase(CACHE_MODE));
 
     private static final Cache<CacheKey, Object> CACHE = Cache.create(
             CacheType.CLIENT,
-                EvictionPolicy.valueOf(
+            EvictionPolicy.valueOf(
                     CACHE_ENABLED ? CACHE_MODE.toUpperCase() : "LRU"
-                )
+            )
     );
 
+    // Fallback arguments
     private static final int DEFAULT_DELAY_MS = 20;
     private static final String DEFAULT_OUTPUT_FILE = "client-output.txt";
     private static final List<String> QUERY_METHODS = List.of(
@@ -50,20 +52,22 @@ public class Client {
             "getNumberofCountries",
             "getNumberofCountriesMM");
 
-
     public static void main(String[] args) {
+        //Read the exercise input file and convert the method & args into a query object
         try (Scanner stdinScanner = new Scanner(System.in)) {
+            //Start total timer
             long totalStart = System.nanoTime();
             File queryFile = resolveQueryFile(stdinScanner);
-            List<QueryRequest> requests = readQueries(queryFile);
-            List<QueryResult> results = executeQueries(requests);
+            List<QueryRequest> requests = readQueries(queryFile); //create list of queries
+            List<QueryResult> results = executeQueries(requests); //execute queries
             List<String> outputLines = new ArrayList<>();
-            System.out.println(CACHE_ENABLED);
+
             for (QueryResult result : results) {
                 String line = result.format();
                 outputLines.add(line);
                 System.out.println(line);
             }
+            //averages for methods
             for (String methodName : QUERY_METHODS) {
                 outputLines.add(buildAverageSummary(methodName, results));
             }
@@ -79,6 +83,7 @@ public class Client {
         }
     }
 
+    //checks if inputfile is set, otherwise assume stdin
     private static File resolveQueryFile(Scanner stdinScanner) {
         String filePath = System.getenv("QUERY_FILE");
         if (filePath == null || filePath.isBlank()) {
@@ -93,6 +98,7 @@ public class Client {
         return queryFile;
     }
 
+    //convert the lines from the queryfile into a queryRequest object
     private static List<QueryRequest> readQueries(File queryFile) throws IOException {
         List<QueryRequest> requests = new ArrayList<>();
         try (Scanner fileScanner = new Scanner(queryFile)) {
@@ -106,18 +112,21 @@ public class Client {
         return requests;
     }
 
+    //wrapper around executeQueries() for executing the whole list 
     private static List<QueryResult> executeQueries(List<QueryRequest> requests)
             throws InterruptedException, ExecutionException {
         if (requests.isEmpty()) {
             return List.of();
         }
 
-        int delayMs = configuredDelayMs();
+        int delayMs = configuredDelayMs(); //get the set millisecond delay : [50, 20]
+        //start independent thread for async method invocation, and its components
         ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
         List<Future<QueryResult>> futures = new ArrayList<>();
         AtomicInteger completed = new AtomicInteger();
         long firstStart = System.nanoTime();
 
+        //fetches all the requests and starts the thread to await response from executeQuery()
         try {
             for (int index = 0; index < requests.size(); index++) {
                 QueryRequest request = requests.get(index);
@@ -142,45 +151,38 @@ public class Client {
         }
     }
 
-    private static QueryResult executeQuery(QueryRequest request, long scheduledStart,
+    /*
+    Executes to the remote server. 
+
+    Checks the cache for a hit, otherwise connects to the proxy for a server-stub,
+    then executes.
+     */    private static QueryResult executeQuery(QueryRequest request, long scheduledStart,
             AtomicInteger completed, int totalQueries)
             throws RemoteException, NotBoundException, InterruptedException {
 
-        // if caching is enabled, create cache key, if not, return null
+        long executionStart = System.nanoTime();
+        CacheKey key = CacheKey.of(request.methodName(), request.arguments());
         if (CACHE_ENABLED) {
-            CacheKey key = CacheKey.of(request.methodName(), request.arguments());
-            QueryResult cachedResult = (QueryResult) CACHE.get(key);
-            if (cachedResult != null) {
+            CachedResponse cachedResponse = (CachedResponse) CACHE.get(key);
+            if (cachedResponse != null) {
                 System.out.println("Cache hit for query: " + request.originalQuery());
+                QueryResult queryResult = timedResult(request, cachedResponse.result(),
+                        cachedResponse.serverAddress(), scheduledStart, executionStart);
                 int completedQueries = completed.incrementAndGet();
                 if (completedQueries % 10 == 0 || completedQueries == totalQueries) {
                     System.out.println("Progress: completed " + completedQueries + "/" + totalQueries + " queries.");
                 }
-                return cachedResult;
+                return queryResult;
             }
         }
 
         RemoteServer remoteServer = connectToServer(request.zone());
-
-        // OSCAR/EIRIK/VETLE -> HER TRENGS DET IMPLEMENTASJON
-        // Her trengs bare proxyen å kontaktes dersom det er cache miss (verdien vil da være null).
-        // OBS OBS, det svaret som kommer tilbake fra serveren, må stores i client cache, hvis enabled.
-        // Det gjøres generelt sånn her: CACHE.put(key, [resultatet fra serveren])
-        long executionStart = System.nanoTime();
-
-        Object result = invokeServer(remoteServer.server(), request);
-        long finished = System.nanoTime();
-
-        long turnaroundMs = nanosToMillis(finished - scheduledStart);
-        long executionMs = nanosToMillis(finished - executionStart);
-        long waitingMs = Math.max(0, turnaroundMs - executionMs);
-
-        QueryResult queryResult = new QueryResult(request, result, remoteServer.address(),
-                turnaroundMs, executionMs, waitingMs);
+        Object result = invokeServer(remoteServer.server(), request); //invoke to the server
+        QueryResult queryResult = timedResult(request, result, remoteServer.address(),
+                scheduledStart, executionStart);
 
         if (CACHE_ENABLED) {
-            CacheKey key = CacheKey.of(request.methodName(), request.arguments());
-            CACHE.put(key, queryResult);
+            CACHE.put(key, new CachedResponse(result, remoteServer.address()));
         }
 
         int completedQueries = completed.incrementAndGet();
@@ -191,15 +193,34 @@ public class Client {
         return queryResult;
     }
 
+    //get the result with the amassed time taken
+    private static QueryResult timedResult(QueryRequest request, Object result,
+            ServerAdress serverAddress, long scheduledStart, long executionStart) {
+        long finished = System.nanoTime();
+        long turnaroundMs = nanosToMillis(finished - scheduledStart);
+        long executionMs = nanosToMillis(finished - executionStart);
+        long waitingMs = Math.max(0, turnaroundMs - executionMs);
+        return new QueryResult(request, result, serverAddress, turnaroundMs, executionMs, waitingMs);
+    }
+
+    //record for a cachedResponse
+    private record CachedResponse(Object result, ServerAdress serverAddress) {
+
+    }
+    //fetches environment for the clients delay time
     private static int configuredDelayMs() {
         String value = System.getenv("CLIENT_DELAY_MS");
         return value == null || value.isBlank() ? DEFAULT_DELAY_MS : Integer.parseInt(value);
     }
 
+    
     private static long nanosToMillis(long nanos) {
         return TimeUnit.NANOSECONDS.toMillis(nanos);
     }
 
+    /*
+    Gets a serverstub and a request, then calls the corresponding method on the serverinterface
+    */
     private static Object invokeServer(ServerInterface server, QueryRequest request) throws RemoteException {
         return switch (request.methodName()) {
             case "getPopulationofCountry" ->
@@ -219,6 +240,7 @@ public class Client {
         };
     }
 
+    //for the last lines of the log
     private static String buildAverageSummary(String methodName, List<QueryResult> results) {
         long count = 0;
         long turnaroundTotal = 0;
@@ -249,6 +271,7 @@ public class Client {
                 + " ms, max turn-around time: " + maxTurnaround + " ms";
     }
 
+    //gets the output directory from env, and writes out
     private static void writeOutputFile(List<String> outputLines) throws IOException {
         Path outputFile = Path.of(System.getenv().getOrDefault(
                 "OUTPUT_FILE", runOutputDirectory().resolve(DEFAULT_OUTPUT_FILE).toString()));
@@ -263,6 +286,7 @@ public class Client {
         }
     }
 
+
     private static Path runOutputDirectory() {
         String configuredDirectory = System.getenv("OUTPUT_DIR");
         if (configuredDirectory != null && !configuredDirectory.isBlank()) {
@@ -274,6 +298,7 @@ public class Client {
         return Path.of("output", cacheType + delayMs);
     }
 
+    //connects to the proxy and fetches the server interface provided to the client
     private static RemoteServer connectToServer(int zone) throws RemoteException, NotBoundException {
         ServerAdress proxyAdress = new ServerAdress("proxy", 1099, "proxy");
         ProxyInterface proxy = (ProxyInterface) getStub(proxyAdress);
@@ -283,7 +308,7 @@ public class Client {
         }
         return new RemoteServer((ServerInterface) getStub(serverAdress), serverAdress);
     }
-
+    
     private static Remote getStub(ServerAdress serveradress) throws RemoteException, NotBoundException {
         try {
             Registry registry = LocateRegistry.getRegistry(serveradress.getIpAddress(), serveradress.getPort());
