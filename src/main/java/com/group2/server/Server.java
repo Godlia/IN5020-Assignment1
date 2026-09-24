@@ -107,11 +107,7 @@ public class Server implements ServerInterface {
 
     @Override
     public int getQueueLength() {
-        try {
-            return requestQueue.submit(() -> requestQueue.size());
-        } catch (Exception exception) {
-            throw new IllegalStateException("Could not read queue length", exception);
-        }
+        return requestQueue.size();
     }
 
     private static int registerWithProxy(String serverHost, int serverPort, String serverName)
