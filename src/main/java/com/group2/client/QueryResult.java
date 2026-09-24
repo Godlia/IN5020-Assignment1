@@ -1,6 +1,6 @@
 package com.group2.client;
 
-import com.group2.utils.serverAdress.ServerAdress;
+import com.group2.proxy.ServerAdress;
 
 record QueryResult(QueryRequest request, Object result, ServerAdress serverAddress,
         long turnaroundMs, long executionMs, long waitingMs) {

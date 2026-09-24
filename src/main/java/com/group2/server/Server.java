@@ -17,9 +17,11 @@ import com.group2.proxy.ServerAdress;
 public class Server implements ServerInterface {
 
     private final ServerRepository repository;
+    private final ServerRequestQueue requestQueue;
 
     public Server() throws SQLException {
         this.repository = new ServerRepository();
+        this.requestQueue = new ServerRequestQueue();
         try {
             repository.importCities(Path.of("exercise_1_dataset.csv"));
         } catch (Exception ex) {
@@ -37,6 +39,7 @@ public class Server implements ServerInterface {
             ServerInterface serverStub = (ServerInterface) UnicastRemoteObject.exportObject(server, 0);
             registry.bind(boundName, serverStub);
             int zone = registerWithProxy(serverHost, 1099, boundName);
+            server.requestQueue.setServerZone(zone);
             System.out.println("Assigned zone " + zone + " to " + serverHost + ".");
         } catch (RemoteException | AlreadyBoundException | NotBoundException | SQLException e) {
             e.printStackTrace();
@@ -44,10 +47,9 @@ public class Server implements ServerInterface {
     }
 
     @Override
-    public long getPopulationofCountry(String countryName) {
+    public long getPopulationofCountry(String countryName, int requestedZone) {
         try {
-            long result = repository.getPopulationOfCountry(countryName);
-            return result;
+            return requestQueue.submit(requestedZone, () -> repository.getPopulationOfCountry(countryName));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -55,10 +57,10 @@ public class Server implements ServerInterface {
     }
 
     @Override
-    public int getNumberofCities(String countryName, int threshold, String comp) {
+    public int getNumberofCities(String countryName, int threshold, String comp, int requestedZone) {
         try {
-            int result = repository.getNumberOfCitiesFiltered(countryName, threshold, comp);
-            return result;
+            return requestQueue.submit(requestedZone,
+                    () -> repository.getNumberOfCitiesFiltered(countryName, threshold, comp));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -66,26 +68,42 @@ public class Server implements ServerInterface {
     }
 
     @Override
-    public int getNumberofCountries(int citycount, int threshold, String comp) {
+    public int getNumberofCountries(int citycount, int threshold, String comp, int requestedZone) {
         try {
-            return repository.getNumberofCountries(citycount, threshold, comp);
-        } catch (SQLException | IllegalArgumentException exception) {
+            return requestQueue.submit(requestedZone, () -> {
+                try {
+                    return repository.getNumberofCountries(citycount, threshold, comp);
+                } catch (SQLException | IllegalArgumentException exception) {
+                    throw new IllegalStateException("Could not count countries", exception);
+                }
+            });
+        } catch (Exception exception) {
             throw new IllegalStateException("Could not count countries", exception);
         }
     }
 
     @Override
-    public int getNumberofCountriesMM(int citycount, int minpopulation, int maxpopulation) {
+    public int getNumberofCountriesMM(int citycount, int minpopulation, int maxpopulation, int requestedZone) {
         try {
-            return repository.getNumberofCountriesMM(citycount, minpopulation, maxpopulation);
-        } catch (SQLException exception) {
+            return requestQueue.submit(requestedZone, () -> {
+                try {
+                    return repository.getNumberofCountriesMM(citycount, minpopulation, maxpopulation);
+                } catch (SQLException exception) {
+                    throw new IllegalStateException("Could not count countries", exception);
+                }
+            });
+        } catch (Exception exception) {
             throw new IllegalStateException("Could not count countries", exception);
         }
     }
 
     @Override
     public int getQueueLength() {
-        return 20; // NOTE: Needs to be implemented
+        try {
+            return requestQueue.submit(() -> requestQueue.size());
+        } catch (Exception exception) {
+            throw new IllegalStateException("Could not read queue length", exception);
+        }
     }
 
     private static int registerWithProxy(String serverHost, int serverPort, String serverName)

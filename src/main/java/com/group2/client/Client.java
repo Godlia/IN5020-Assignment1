@@ -155,13 +155,14 @@ public class Client {
 
     private static Object invokeServer(ServerInterface server, QueryRequest request) throws RemoteException {
         return switch (request.methodName()) {
-            case "getPopulationofCountry" -> server.getPopulationofCountry((String) request.arguments()[0]);
+                case "getPopulationofCountry" -> server.getPopulationofCountry(
+                    (String) request.arguments()[0], request.zone());
             case "getNumberofCities" -> server.getNumberofCities((String) request.arguments()[0],
-                    (int) request.arguments()[1], (String) request.arguments()[2]);
+                    (int) request.arguments()[1], (String) request.arguments()[2], request.zone());
             case "getNumberofCountries" -> server.getNumberofCountries((int) request.arguments()[0],
-                    (int) request.arguments()[1], (String) request.arguments()[2]);
+                    (int) request.arguments()[1], (String) request.arguments()[2], request.zone());
             case "getNumberofCountriesMM" -> server.getNumberofCountriesMM((int) request.arguments()[0],
-                    (int) request.arguments()[1], (int) request.arguments()[2]);
+                    (int) request.arguments()[1], (int) request.arguments()[2], request.zone());
             default -> throw new IllegalArgumentException("Unknown method: " + request.methodName());
         };
     }
