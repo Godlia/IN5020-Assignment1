@@ -45,7 +45,13 @@ public class Proxy implements ProxyInterface{
 
         // Appends new server to serverList and assignmenCounts
         serverList = java.util.Arrays.copyOf(serverList, serverList.length + 1);
-        ServerInfo server = new ServerInfo(serverAdress, serverList.length);
+        int zone = serverList.length;
+        ServerAdress addressWithZone = new ServerAdress(
+            serverAdress.getIpAddress(),
+            serverAdress.getPort(),
+            serverAdress.getServerName(),
+            zone);
+        ServerInfo server = new ServerInfo(addressWithZone, zone);
         serverList[serverList.length - 1] = server;
 
         assignmentCounts.put(server, 0);
@@ -79,7 +85,11 @@ public class Proxy implements ProxyInterface{
         }
 
         ServerAdress address = server.getServerAdress(); // Gets the part the client needs (with info on how to connect to the server)
-        return address;
+        return new ServerAdress(
+            address.getIpAddress(),
+            address.getPort(),
+            address.getServerName(),
+            server.getZone());
     };
 
     private ServerInfo PriorityAlgorithm(int zone){

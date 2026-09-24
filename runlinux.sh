@@ -98,7 +98,7 @@ for cache_type in "${cache_types[@]}"; do
 			SERVER_CACHE_MODE="$server_cache_mode" \
 			CACHE_POLICY="$cache_policy" \
 			PROXY_PORT="$proxy_port" \
-			docker compose -p "$project" up -d
+			docker compose -p "$project" up -d --build
 			docker compose -p "$project" wait client
 			docker compose -p "$project" down --remove-orphans
 		) &

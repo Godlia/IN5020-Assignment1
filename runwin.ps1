@@ -100,7 +100,7 @@ $runScenario = {
 	$env:CACHE_POLICY = $cachePolicy
 	$env:PROXY_PORT = "$ProxyPort"
 
-	Invoke-Native { docker compose -p $Project up -d }
+	Invoke-Native { docker compose -p $Project up -d --build }
 	Invoke-Native { docker compose -p $Project wait client }
 	Invoke-Native { docker compose -p $Project down --remove-orphans }
 }
