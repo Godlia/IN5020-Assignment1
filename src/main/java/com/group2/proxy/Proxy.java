@@ -76,12 +76,14 @@ public class Proxy implements ProxyInterface{
             return null;
         }
 
+        // If the zone exists, this part just returns the server in the same zone
         int effectiveZone = findClockwiseZone(zone);
         ServerInfo sameZone = findServerInZone(effectiveZone);
         if (sameZone == null) {
             return null;
         }
 
+        // Under maximum queue length condition
         if (sameZone.getQueLength() < MAX_WAITING_QUEUE_LENGTH) {
             return sameZone;
         }
@@ -100,8 +102,18 @@ public class Proxy implements ProxyInterface{
             }
         }
 
+
         // When every server is overloaded, return the same-zone server even though its queue is overloaded.
-        return best != null ? best : sameZone;
+        best = best != null ? best : sameZone;
+
+        if (VERBOSE) {
+            // Catches only if it assigns to another zone, which is not the same zone as the request.
+            if (best.getZone() != effectiveZone) {
+                System.out.println("Zone " + zone + " is overloaded. Assigning to zone " + best.getZone() + " instead.");
+            }       
+        }
+
+        return best;
     }
 
     private ServerInfo findServerInZone(int zone) {
