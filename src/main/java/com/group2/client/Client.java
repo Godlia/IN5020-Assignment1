@@ -12,9 +12,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -23,7 +23,7 @@ import com.group2.proxy.ServerAdress;
 import com.group2.server.ServerInterface;
 
 public class Client {
-    private static final int DEFAULT_DELAY_MS = 50;
+    private static final int DEFAULT_DELAY_MS = 20;
     private static final String DEFAULT_OUTPUT_FILE = "client-output.txt";
     private static final List<String> QUERY_METHODS = List.of(
             "getPopulationofCountry",
@@ -92,9 +92,8 @@ public class Client {
             return List.of();
         }
 
-        int poolSize = Math.min(requests.size(), Math.max(4, Runtime.getRuntime().availableProcessors() * 2));
         int delayMs = configuredDelayMs();
-        ScheduledExecutorService executor = Executors.newScheduledThreadPool(poolSize);
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
         List<Future<QueryResult>> futures = new ArrayList<>();
         AtomicInteger completed = new AtomicInteger();
         long firstStart = System.nanoTime();
@@ -103,11 +102,13 @@ public class Client {
             for (int index = 0; index < requests.size(); index++) {
                 QueryRequest request = requests.get(index);
                 long scheduledStart = firstStart + TimeUnit.MILLISECONDS.toNanos((long) index * delayMs);
-                long delay = Math.max(0, scheduledStart - System.nanoTime());
-                futures.add(executor.schedule(
-                    () -> executeQuery(request, scheduledStart, completed, requests.size()),
-                        delay,
-                        TimeUnit.NANOSECONDS));
+                futures.add(executor.submit(() -> {
+                    long delay = scheduledStart - System.nanoTime();
+                    if (delay > 0) {
+                        TimeUnit.NANOSECONDS.sleep(delay);
+                    }
+                    return executeQuery(request, scheduledStart, completed, requests.size());
+                }));
             }
 
             List<QueryResult> results = new ArrayList<>();
@@ -120,9 +121,9 @@ public class Client {
         }
     }
 
-            private static QueryResult executeQuery(QueryRequest request, long scheduledStart,
-                AtomicInteger completed, int totalQueries)
-            throws RemoteException, NotBoundException {
+    private static QueryResult executeQuery(QueryRequest request, long scheduledStart,
+            AtomicInteger completed, int totalQueries)
+            throws RemoteException, NotBoundException, InterruptedException {
         RemoteServer remoteServer = connectToServer(request.zone());
         long executionStart = System.nanoTime();
         Object result = invokeServer(remoteServer.server(), request);
@@ -139,7 +140,6 @@ public class Client {
             System.out.println("Progress: completed " + completedQueries + "/" + totalQueries + " queries.");
         }
 
-        
         return new QueryResult(request, result, remoteServer.address(),
                 turnaroundMs, executionMs, waitingMs);
     }

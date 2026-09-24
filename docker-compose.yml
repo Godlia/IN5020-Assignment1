@@ -117,6 +117,7 @@ services:
       APP_ROLE: client
       QUERY_FILE: /in5020/exercise_1_input.txt
       OUTPUT_FILE: /in5020/output/client-output.txt
+      CLIENT_DELAY_MS: 10
     volumes:
       - ./exercise_1_input.txt:/in5020/exercise_1_input.txt:ro
       - ./output:/in5020/output:rw
