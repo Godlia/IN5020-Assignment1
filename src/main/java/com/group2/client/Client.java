@@ -136,11 +136,7 @@ public class Client {
         //Output status
         int completedQueries = completed.incrementAndGet();
         if (completedQueries % 10 == 0 || completedQueries == totalQueries) {
-            System.out.print("\rProgress: completed " + completedQueries + "/" + totalQueries + " queries.");
-            System.out.flush();
-            if (completedQueries == totalQueries) {
-                System.out.println();
-            }
+            System.out.println("Progress: completed " + completedQueries + "/" + totalQueries + " queries.");
         }
 
         

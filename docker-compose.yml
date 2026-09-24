@@ -24,6 +24,12 @@ services:
     depends_on:
       proxy:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "java", "-cp", "/in5020/target/assignment1.jar", "com.group2.server.ServerHealthCheck"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 2s
 
   serverB:
     build: .
@@ -34,6 +40,12 @@ services:
     depends_on:
       proxy:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "java", "-cp", "/in5020/target/assignment1.jar", "com.group2.server.ServerHealthCheck"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 2s
 
   serverC:
     build: .
@@ -44,6 +56,12 @@ services:
     depends_on:
       proxy:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "java", "-cp", "/in5020/target/assignment1.jar", "com.group2.server.ServerHealthCheck"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 2s
 
   serverD:
     build: .
@@ -54,6 +72,12 @@ services:
     depends_on:
       proxy:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "java", "-cp", "/in5020/target/assignment1.jar", "com.group2.server.ServerHealthCheck"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 2s
 
   serverE:
     build: .
@@ -64,6 +88,12 @@ services:
     depends_on:
       proxy:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "java", "-cp", "/in5020/target/assignment1.jar", "com.group2.server.ServerHealthCheck"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 2s
 
 
   client:
@@ -74,17 +104,17 @@ services:
       OUTPUT_FILE: /in5020/output/client-output.txt
     volumes:
       - ./exercise_1_input.txt:/in5020/exercise_1_input.txt:ro
-      - ./output:/in5020/output
+      - ./output:/in5020/output:rw
     depends_on:
       proxy:
         condition: service_healthy
       serverA:
-        condition: service_started
+        condition: service_healthy
       serverB:
-        condition: service_started
+        condition: service_healthy
       serverC:
-        condition: service_started
+        condition: service_healthy
       serverD:
-        condition: service_started
+        condition: service_healthy
       serverE:
-        condition: service_started
+        condition: service_healthy
