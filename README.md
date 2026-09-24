@@ -3,40 +3,26 @@
 ## How to run
 
 ### Requirements
-
 * Java Development Kit V.21
 * Docker Engine
 * Docker Compose V2
 
 ### Installing and running
 
-#### Automatic runscript
-
 If on Windows, run:
-
 ```bash
 ./runwin.ps1
 ```
 
 If on Linux, run:
-
 ```bash
 ./run.sh
 ```
 
 If on Mac, run (untested due to no macs in group):
-
 ```bash
 ./runmac.sh
 ```
-
-#### Manual Installation
-
-```bash
-
-```
-
-## Run time
 
 ## Workload distribution
 
@@ -52,3 +38,6 @@ If on Mac, run (untested due to no macs in group):
   * Docker Compose
 * Kine
   * Caching
+
+## Run time images
+![Docker server and client running](media/Docker-sever-client-running.png)
