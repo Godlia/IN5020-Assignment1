@@ -1,0 +1,7 @@
+variant,T_ms,unit,queries,turnaround_mean,turnaround_median,turnaround_p95,turnaround_max,execution_mean,waiting_mean,rest_mean,client_cache_hits_marked,redirected_to_other_zone,queue_peak_A,queue_peak_B,queue_peak_C,queue_peak_D,queue_peak_E
+naive_server,50,s,3166,24.32,20.03,57.49,66.32,24.31,0.01,0.0,0,unknown,152,225,220,182,158
+naive_server,20,s,3166,74.7,69.39,142.62,151.67,74.24,0.46,0.0,0,unknown,509,404,363,440,487
+server_cache,50,s,3166,25.97,20.03,61.1,68.74,25.92,0.04,0.0,0,unknown,218,146,171,179,246
+server_cache,20,s,3166,78.81,74.0,145.94,149.59,78.64,0.17,0.0,0,unknown,479,402,404,442,542
+client_cache,50,s,3166,27.01,22.86,63.23,70.29,27.0,0.01,0.0,0,unknown,172,236,168,226,176
+client_cache,20,s,3166,81.67,78.94,145.57,147.33,80.91,0.76,0.0,0,unknown,544,501,393,460,431
