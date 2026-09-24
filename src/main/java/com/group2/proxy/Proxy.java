@@ -15,7 +15,7 @@ import com.group2.server.ServerInterface;
 
 
 public class Proxy implements ProxyInterface{
-    boolean VERBOSE = true;
+    boolean VERBOSE = Boolean.parseBoolean(System.getenv().getOrDefault("VERBOSE", "false"));
     public static void main(String[] args) throws RemoteException, NotBoundException {
             try {
                 Registry registry = LocateRegistry.createRegistry(1099);

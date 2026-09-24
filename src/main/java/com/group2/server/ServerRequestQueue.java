@@ -79,7 +79,7 @@ final class ServerRequestQueue {
     }
 
     private synchronized void logQueueSize(String event) {
-        queueLog.println(Instant.now() + " " + event + " queue-size=" + waitingTasks.size());
+        queueLog.println(Instant.now().toEpochMilli() + " " + event + " queue-size=" + waitingTasks.size());
         queueLog.flush();
     }
 

@@ -5,6 +5,7 @@ services:
     build: .
     environment:
       APP_ROLE: proxy
+      VERBOSE: false
     ports:
       - "${PROXY_PORT:-1099}:1099"
     healthcheck:
