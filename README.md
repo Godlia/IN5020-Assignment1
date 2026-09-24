@@ -1,68 +1,39 @@
 # IN5020 Group 2
 
-## Arbeidsfordeling
+## How to run
 
-* Eirik
-  * Client, query-parsing og tester
-  * Processing Server, logikk og number crunching
-* Oscar
-  * Proxy server, loadbalancing
-  * Client/Server registration
-* Vetle
-  * Dockerization
-  * Docker Compose
-* Kine
-  * Caching
+### Requirements
+#### System requirements for running computer
+DockerDesktop
 
-**Uklare oppgaver igjen:**
-
-* Køteknikk
-
-Hvis det kommer noe mer opp så bare skriv det her.
-
-Jeg tror ikke det skader at vi har noen ansvar som overlapper, generelt lurt at all kode som blir skrevet blir dobbeltsjekket av noen andre.
-
-## Requirements
-
+#### Main tool requirements (included in project)
 * Java 21 (JDK)
 * Maven (A wrapper has been included for convenience)
 
 ## Installing and running
 
-All commands are run in the root folder
-
-Linux / WSL / macOS:
-
+If on Windows, run:
 ```bash
-./mvnw clean package
+rundatshit.ps1
+```
+If on Linux or Mac, run:
+```bash
+rundatshit.sh
 ```
 
-Windows:
 
-```bash
-.\mvnw.cmd clean package
-```
 
-**Temp forklaring til medstudenter**
-Jeg leste meg opp litt, og forstod at det er lurt å ha en Maven wrapper, altså en Maven i prosjektet, så vi deler Maven versjon og øker reproduserbarhet. Jeg har ingen erfraring med dette, men prøvde å sette det opp. Åpen for tilbakemeldinger \
-\- Oscar
+## Workload distribution
 
-### Now open three other terminals and run these commands in each
-
-#### Terminal 1 (Proxy)
-
-```bash
-java -cp ./target/assignment1.jar com.group2.proxy.Proxy
-```
-
-#### Terminal 2
-
-```bash
-java -cp ./target/assignment1.jar com.group2.server.Server {ZONE}
-```
-
-#### Terminal 3
-
-```bash
-java -cp ./target/assignment1.jar com.group2.client.Client
-```
+* Eirik
+  * Client, query-parsing and tester
+  * Processing Server, logic and number crunching
+* Oscar
+  * Proxy / load balancer
+  * Servers registration
+  * Clients request to Proxy
+* Vetle
+  * Dockerization
+  * Docker Compose
+* Kine
+  * Caching
