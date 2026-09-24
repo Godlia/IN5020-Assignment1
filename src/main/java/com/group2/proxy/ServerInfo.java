@@ -1,8 +1,6 @@
-package com.group2.utils.serverInfo;
+package com.group2.proxy;
 
 import java.io.Serializable;
-
-import com.group2.utils.serverAdress.ServerAdress;
 
 public class ServerInfo implements Serializable {
     private ServerAdress serverAdress;
