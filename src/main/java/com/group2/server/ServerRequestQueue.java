@@ -2,6 +2,7 @@ package com.group2.server;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.concurrent.Callable;
@@ -83,11 +84,24 @@ final class ServerRequestQueue {
     }
 
     private static PrintWriter openLog() {
-        String logFile = System.getenv().getOrDefault("QUEUE_LOG_FILE", "server-queue.log");
+        String defaultDirectory = System.getenv().getOrDefault("OUTPUT_DIR", runOutputDirectory());
+        String logFile = System.getenv().getOrDefault("QUEUE_LOG_FILE",
+                Path.of(defaultDirectory, "server-queue.log").toString());
         try {
-            return new PrintWriter(Path.of(logFile).toFile());
+            Path path = Path.of(logFile);
+            Path parent = path.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            return new PrintWriter(path.toFile());
         } catch (IOException exception) {
             throw new IllegalStateException("Could not open queue log " + logFile, exception);
         }
+    }
+
+    private static String runOutputDirectory() {
+        String cacheType = System.getenv().getOrDefault("CACHE_TYPE", "NAIVE");
+        String delayMs = System.getenv().getOrDefault("CLIENT_DELAY_MS", "20");
+        return Path.of("output", cacheType + delayMs).toString();
     }
 }

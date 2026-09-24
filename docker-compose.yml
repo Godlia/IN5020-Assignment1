@@ -6,7 +6,7 @@ services:
     environment:
       APP_ROLE: proxy
     ports:
-      - "1099:1099"
+      - "${PROXY_PORT:-1099}:1099"
     healthcheck:
       test: ["CMD", "java", "-cp", "/in5020/target/assignment1.jar", "com.group2.proxy.ProxyHealthCheck"]
       interval: 2s
@@ -21,7 +21,10 @@ services:
     environment:
       APP_ROLE: server
       SERVER_HOST: serverA
-      QUEUE_LOG_FILE: /in5020/output/serverA-queue.log
+      CACHE_TYPE: "${CACHE_TYPE:-NAIVE}"
+      QUEUE_LOG_FILE: /in5020/output/${RUN_NAME}/serverA-queue.log
+      CACHE_MODE: "${SERVER_CACHE_MODE:-NAIVE}"
+      CACHE_POLICY: "${CACHE_POLICY:-LRU}"
     volumes:
       - ./output:/in5020/output:rw
     depends_on:
@@ -40,7 +43,10 @@ services:
     environment:
       APP_ROLE: server
       SERVER_HOST: serverB
-      QUEUE_LOG_FILE: /in5020/output/serverB-queue.log
+      CACHE_TYPE: "${CACHE_TYPE:-NAIVE}"
+      QUEUE_LOG_FILE: /in5020/output/${RUN_NAME}/serverB-queue.log
+      CACHE_MODE: "${SERVER_CACHE_MODE:-NAIVE}"
+      CACHE_POLICY: "${CACHE_POLICY:-LRU}"
     volumes:
       - ./output:/in5020/output:rw
     depends_on:
@@ -59,7 +65,10 @@ services:
     environment:
       APP_ROLE: server
       SERVER_HOST: serverC
-      QUEUE_LOG_FILE: /in5020/output/serverC-queue.log
+      CACHE_TYPE: "${CACHE_TYPE:-NAIVE}"
+      QUEUE_LOG_FILE: /in5020/output/${RUN_NAME}/serverC-queue.log
+      CACHE_MODE: "${SERVER_CACHE_MODE:-NAIVE}"
+      CACHE_POLICY: "${CACHE_POLICY:-LRU}"
     volumes:
       - ./output:/in5020/output:rw
     depends_on:
@@ -78,7 +87,10 @@ services:
     environment:
       APP_ROLE: server
       SERVER_HOST: serverD
-      QUEUE_LOG_FILE: /in5020/output/serverD-queue.log
+      CACHE_TYPE: "${CACHE_TYPE:-NAIVE}"
+      QUEUE_LOG_FILE: /in5020/output/${RUN_NAME}/serverD-queue.log
+      CACHE_MODE: "${SERVER_CACHE_MODE:-NAIVE}"
+      CACHE_POLICY: "${CACHE_POLICY:-LRU}"
     volumes:
       - ./output:/in5020/output:rw
     depends_on:
@@ -97,7 +109,10 @@ services:
     environment:
       APP_ROLE: server
       SERVER_HOST: serverE
-      QUEUE_LOG_FILE: /in5020/output/serverE-queue.log
+      CACHE_TYPE: "${CACHE_TYPE:-NAIVE}"
+      QUEUE_LOG_FILE: /in5020/output/${RUN_NAME}/serverE-queue.log
+      CACHE_MODE: "${SERVER_CACHE_MODE:-NAIVE}"
+      CACHE_POLICY: "${CACHE_POLICY:-LRU}"
     volumes:
       - ./output:/in5020/output:rw
     depends_on:
@@ -116,8 +131,9 @@ services:
     environment:
       APP_ROLE: client
       QUERY_FILE: /in5020/exercise_1_input.txt
-      OUTPUT_FILE: /in5020/output/client-output.txt
-      CLIENT_DELAY_MS: 10
+      OUTPUT_FILE: /in5020/output/${RUN_NAME}/client-output.txt
+      CLIENT_DELAY_MS: "${CLIENT_DELAY_MS:-20}"
+      CACHE_MODE: "${CACHE_TYPE:-NAIVE}"
     volumes:
       - ./exercise_1_input.txt:/in5020/exercise_1_input.txt:ro
       - ./output:/in5020/output:rw

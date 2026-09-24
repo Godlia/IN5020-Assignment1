@@ -3,6 +3,8 @@ package com.group2.client;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.rmi.NotBoundException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
@@ -27,15 +29,17 @@ import com.group2.proxy.ServerAdress;
 import com.group2.server.ServerInterface;
 
 public class Client {
-    private static final boolean CACHE_ENABLED = "CLIENT".equalsIgnoreCase(
-            System.getenv().getOrDefault("CACHE_MODE", "NAIVE"));
+
+        private static final String CACHE_MODE = System.getenv("CACHE_MODE");
+        private static final boolean CACHE_ENABLED = CACHE_MODE != null
+            && ("LRU".equalsIgnoreCase(CACHE_MODE)
+            || "FIFO".equalsIgnoreCase(CACHE_MODE));
 
     private static final Cache<CacheKey, Object> CACHE = Cache.create(
             CacheType.CLIENT,
-            EvictionPolicy.valueOf(
-                    System.getenv().getOrDefault("CACHE_POLICY", "LRU")
-                            .toUpperCase()
-            )
+                EvictionPolicy.valueOf(
+                    CACHE_ENABLED ? CACHE_MODE.toUpperCase() : "LRU"
+                )
     );
 
     private static final int DEFAULT_DELAY_MS = 20;
@@ -46,8 +50,6 @@ public class Client {
             "getNumberofCountries",
             "getNumberofCountriesMM");
 
-    private static final Cache<CacheKey, QueryResult> clientCache =
-            Cache.create(CacheType.CLIENT, EvictionPolicy.FIFO);
 
     public static void main(String[] args) {
         try (Scanner stdinScanner = new Scanner(System.in)) {
@@ -56,7 +58,7 @@ public class Client {
             List<QueryRequest> requests = readQueries(queryFile);
             List<QueryResult> results = executeQueries(requests);
             List<String> outputLines = new ArrayList<>();
-
+            System.out.println(CACHE_ENABLED);
             for (QueryResult result : results) {
                 String line = result.format();
                 outputLines.add(line);
@@ -119,7 +121,7 @@ public class Client {
         try {
             for (int index = 0; index < requests.size(); index++) {
                 QueryRequest request = requests.get(index);
-                
+
                 long scheduledStart = firstStart + TimeUnit.MILLISECONDS.toNanos((long) index * delayMs);
                 futures.add(executor.submit(() -> {
                     long delay = scheduledStart - System.nanoTime();
@@ -143,32 +145,27 @@ public class Client {
     private static QueryResult executeQuery(QueryRequest request, long scheduledStart,
             AtomicInteger completed, int totalQueries)
             throws RemoteException, NotBoundException, InterruptedException {
-        CacheKey cacheKey = CacheKey.of(request.methodName(), request.arguments());
-        QueryResult cachedResult = clientCache.get(cacheKey);
-        if (cachedResult != null) {
-            System.out.println("Cache hit for query: " + request.originalQuery());
-            int completedQueries = completed.incrementAndGet();
-            if (completedQueries % 10 == 0 || completedQueries == totalQueries) {
-                System.out.println("Progress: completed " + completedQueries + "/" + totalQueries + " queries.");
+
+        // if caching is enabled, create cache key, if not, return null
+        if (CACHE_ENABLED) {
+            CacheKey key = CacheKey.of(request.methodName(), request.arguments());
+            QueryResult cachedResult = (QueryResult) CACHE.get(key);
+            if (cachedResult != null) {
+                System.out.println("Cache hit for query: " + request.originalQuery());
+                int completedQueries = completed.incrementAndGet();
+                if (completedQueries % 10 == 0 || completedQueries == totalQueries) {
+                    System.out.println("Progress: completed " + completedQueries + "/" + totalQueries + " queries.");
+                }
+                return cachedResult;
             }
-            return cachedResult;
         }
 
         RemoteServer remoteServer = connectToServer(request.zone());
-
-        // if caching is enabled, create cache key, if not, return null
-        CacheKey key = CACHE_ENABLED
-                ? CacheKey.of(request.methodName(), request.arguments())
-                : null;
-
-        // if caching is enabled, the key is now created, and here is the cache lookup. If not, it returns null.
-        Object result = CACHE_ENABLED ? CACHE.get(key) : null;
 
         // OSCAR/EIRIK/VETLE -> HER TRENGS DET IMPLEMENTASJON
         // Her trengs bare proxyen å kontaktes dersom det er cache miss (verdien vil da være null).
         // OBS OBS, det svaret som kommer tilbake fra serveren, må stores i client cache, hvis enabled.
         // Det gjøres generelt sånn her: CACHE.put(key, [resultatet fra serveren])
-
         long executionStart = System.nanoTime();
 
         Object result = invokeServer(remoteServer.server(), request);
@@ -180,7 +177,11 @@ public class Client {
 
         QueryResult queryResult = new QueryResult(request, result, remoteServer.address(),
                 turnaroundMs, executionMs, waitingMs);
-        clientCache.put(cacheKey, queryResult);
+
+        if (CACHE_ENABLED) {
+            CacheKey key = CacheKey.of(request.methodName(), request.arguments());
+            CACHE.put(key, queryResult);
+        }
 
         int completedQueries = completed.incrementAndGet();
         if (completedQueries % 10 == 0 || completedQueries == totalQueries) {
@@ -201,15 +202,20 @@ public class Client {
 
     private static Object invokeServer(ServerInterface server, QueryRequest request) throws RemoteException {
         return switch (request.methodName()) {
-                case "getPopulationofCountry" -> server.getPopulationofCountry(
-                    (String) request.arguments()[0], request.zone());
-            case "getNumberofCities" -> server.getNumberofCities((String) request.arguments()[0],
-                    (int) request.arguments()[1], (String) request.arguments()[2], request.zone());
-            case "getNumberofCountries" -> server.getNumberofCountries((int) request.arguments()[0],
-                    (int) request.arguments()[1], (String) request.arguments()[2], request.zone());
-            case "getNumberofCountriesMM" -> server.getNumberofCountriesMM((int) request.arguments()[0],
-                    (int) request.arguments()[1], (int) request.arguments()[2], request.zone());
-            default -> throw new IllegalArgumentException("Unknown method: " + request.methodName());
+            case "getPopulationofCountry" ->
+                server.getPopulationofCountry(
+                (String) request.arguments()[0], request.zone());
+            case "getNumberofCities" ->
+                server.getNumberofCities((String) request.arguments()[0],
+                (int) request.arguments()[1], (String) request.arguments()[2], request.zone());
+            case "getNumberofCountries" ->
+                server.getNumberofCountries((int) request.arguments()[0],
+                (int) request.arguments()[1], (String) request.arguments()[2], request.zone());
+            case "getNumberofCountriesMM" ->
+                server.getNumberofCountriesMM((int) request.arguments()[0],
+                (int) request.arguments()[1], (int) request.arguments()[2], request.zone());
+            default ->
+                throw new IllegalArgumentException("Unknown method: " + request.methodName());
         };
     }
 
@@ -244,12 +250,28 @@ public class Client {
     }
 
     private static void writeOutputFile(List<String> outputLines) throws IOException {
-        String outputFile = System.getenv().getOrDefault("OUTPUT_FILE", DEFAULT_OUTPUT_FILE);
-        try (PrintWriter writer = new PrintWriter(outputFile)) {
+        Path outputFile = Path.of(System.getenv().getOrDefault(
+                "OUTPUT_FILE", runOutputDirectory().resolve(DEFAULT_OUTPUT_FILE).toString()));
+        Path parent = outputFile.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
+        try (PrintWriter writer = new PrintWriter(outputFile.toFile())) {
             for (String line : outputLines) {
                 writer.println(line);
             }
         }
+    }
+
+    private static Path runOutputDirectory() {
+        String configuredDirectory = System.getenv("OUTPUT_DIR");
+        if (configuredDirectory != null && !configuredDirectory.isBlank()) {
+            return Path.of(configuredDirectory);
+        }
+
+        String cacheType = System.getenv().getOrDefault("CACHE_TYPE", "NAIVE");
+        String delayMs = System.getenv().getOrDefault("CLIENT_DELAY_MS", "20");
+        return Path.of("output", cacheType + delayMs);
     }
 
     private static RemoteServer connectToServer(int zone) throws RemoteException, NotBoundException {

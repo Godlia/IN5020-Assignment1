@@ -8,28 +8,38 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.sql.SQLException;
+import java.util.concurrent.Callable;
 
 import com.group2.cache.Cache;
+import com.group2.cache.CacheKey;
 import com.group2.cache.CacheType;
 import com.group2.cache.EvictionPolicy;
-import com.group2.cache.CacheKey;
 import com.group2.proxy.ProxyInterface;
 import com.group2.proxy.ServerAdress;
-
-import java.util.concurrent.Callable;
 
 
 
 
 public class Server implements ServerInterface {
 
+    private static final String CACHE_TYPE = resolveCacheType();
+
     private final ServerRepository repository;
     private final ServerRequestQueue requestQueue;
-    private final boolean cacheEnabled = "SERVER".equalsIgnoreCase(
-            System.getenv().getOrDefault("CACHE_MODE", "NAIVE"));
+    private final boolean cacheEnabled = "FIFO".equals(CACHE_TYPE) || "LRU".equals(CACHE_TYPE);
     private final Cache<CacheKey, Object> cache = Cache.create(CacheType.SERVER,
-            EvictionPolicy.valueOf(System.getenv().getOrDefault("CACHE_POLICY", "LRU")
-                    .toUpperCase()));
+            EvictionPolicy.valueOf(cacheEnabled ? CACHE_TYPE : "LRU"));
+
+    private static String resolveCacheType() {
+        String cacheType = System.getenv("CACHE_TYPE");
+        if (cacheType == null || cacheType.isBlank()) {
+            String cacheMode = System.getenv().getOrDefault("CACHE_MODE", "NAIVE");
+            cacheType = "SERVER".equalsIgnoreCase(cacheMode)
+                    ? System.getenv().getOrDefault("CACHE_POLICY", "LRU")
+                    : "NAIVE";
+        }
+        return cacheType.toUpperCase();
+    }
 
     public Server() throws SQLException {
         this.repository = new ServerRepository();
