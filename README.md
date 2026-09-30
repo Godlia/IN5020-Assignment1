@@ -1,5 +1,7 @@
 # IN5020 Group 2
 
+## Jeg ville ikke kopiert dette om jeg var dere
+
 ## How to run
 
 ### Requirements
